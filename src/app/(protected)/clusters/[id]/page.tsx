@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Cluster, ClusterMember } from "@/types/database";
+import { clusterDisplayId } from "@/lib/clusters";
 
 export default async function ClusterDetailPage({
   params,
@@ -132,8 +133,8 @@ export default async function ClusterDetailPage({
             <span className="text-sm text-muted-foreground">/</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">{cluster.name}</h1>
-          {cluster.region && (
-            <p className="text-muted-foreground">{cluster.region}</p>
+          {clusterDisplayId(cluster) && (
+            <p className="text-muted-foreground">{clusterDisplayId(cluster)}</p>
           )}
           {cluster.description && (
             <p className="mt-1 text-sm text-muted-foreground">

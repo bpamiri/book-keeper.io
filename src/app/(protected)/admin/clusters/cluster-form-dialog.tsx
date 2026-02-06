@@ -36,13 +36,18 @@ export function ClusterFormDialog({ mode, cluster, trigger }: ClusterFormDialogP
 
     const formData = new FormData(e.currentTarget);
     const name = formData.get("name") as string;
-    const region = (formData.get("region") as string) || undefined;
+    const stateCode = (formData.get("stateCode") as string) || undefined;
+    const subRegionCode = (formData.get("subRegionCode") as string) || undefined;
+    const clusterNumberRaw = formData.get("clusterNumber") as string;
+    const clusterNumber = clusterNumberRaw ? Number(clusterNumberRaw) : undefined;
     const description = (formData.get("description") as string) || undefined;
 
     if (mode === "edit" && cluster) {
       const result = await updateCluster(cluster.id, {
         name,
-        region: region || null,
+        state_code: stateCode || null,
+        sub_region_code: subRegionCode || null,
+        cluster_number: clusterNumber ?? null,
         description: description || null,
       });
 
@@ -57,7 +62,9 @@ export function ClusterFormDialog({ mode, cluster, trigger }: ClusterFormDialogP
 
       const result = await createCluster({
         name,
-        region: region || null,
+        state_code: stateCode || null,
+        sub_region_code: subRegionCode || null,
+        cluster_number: clusterNumber ?? null,
         description: description || null,
       });
 
@@ -127,14 +134,43 @@ export function ClusterFormDialog({ mode, cluster, trigger }: ClusterFormDialogP
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="region">Region</Label>
-              <Input
-                id="region"
-                name="region"
-                placeholder="e.g. Southeast"
-                defaultValue={cluster?.region ?? ""}
-              />
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="stateCode">State Code *</Label>
+                <Input
+                  id="stateCode"
+                  name="stateCode"
+                  placeholder="CA"
+                  maxLength={2}
+                  className="uppercase"
+                  defaultValue={cluster?.state_code ?? ""}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="subRegionCode">Sub-Region *</Label>
+                <Input
+                  id="subRegionCode"
+                  name="subRegionCode"
+                  placeholder="SE"
+                  maxLength={2}
+                  className="uppercase"
+                  defaultValue={cluster?.sub_region_code ?? ""}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="clusterNumber">Number *</Label>
+                <Input
+                  id="clusterNumber"
+                  name="clusterNumber"
+                  type="number"
+                  min={1}
+                  placeholder="5"
+                  defaultValue={cluster?.cluster_number ?? ""}
+                  required
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>

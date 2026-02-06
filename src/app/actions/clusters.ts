@@ -5,7 +5,9 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function createCluster(data: {
   name: string
-  region?: string | null
+  state_code?: string | null
+  sub_region_code?: string | null
+  cluster_number?: number | null
   description?: string | null
 }) {
   try {
@@ -28,7 +30,9 @@ export async function createCluster(data: {
       .from('clusters')
       .insert({
         name: data.name,
-        region: data.region ?? null,
+        state_code: data.state_code ?? null,
+        sub_region_code: data.sub_region_code ?? null,
+        cluster_number: data.cluster_number ?? null,
         description: data.description ?? null,
         created_by: user.id,
       })
@@ -49,7 +53,9 @@ export async function updateCluster(
   id: string,
   data: {
     name?: string
-    region?: string | null
+    state_code?: string | null
+    sub_region_code?: string | null
+    cluster_number?: number | null
     description?: string | null
   }
 ) {

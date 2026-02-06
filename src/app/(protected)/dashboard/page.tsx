@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Cluster, ClusterMember, Profile } from "@/types/database";
+import { clusterDisplayId } from "@/lib/clusters";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -138,8 +139,8 @@ export default async function DashboardPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <CardTitle className="text-lg">{cluster.name}</CardTitle>
-                      {cluster.region && (
-                        <CardDescription>{cluster.region}</CardDescription>
+                      {clusterDisplayId(cluster) && (
+                        <CardDescription>{clusterDisplayId(cluster)}</CardDescription>
                       )}
                     </div>
                     <Badge

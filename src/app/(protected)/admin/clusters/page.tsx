@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { Cluster, Profile } from "@/types/database";
+import { clusterDisplayId } from "@/lib/clusters";
 import { ClusterFormDialog } from "./cluster-form-dialog";
 import { ClusterActions } from "./cluster-actions";
 
@@ -87,8 +88,8 @@ export default async function AdminClustersPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="hidden sm:table-cell">ID</TableHead>
                 <TableHead className="whitespace-normal">Name</TableHead>
-                <TableHead className="hidden sm:table-cell">Region</TableHead>
                 <TableHead>Members</TableHead>
                 <TableHead className="hidden md:table-cell">Created</TableHead>
                 <TableHead className="w-[60px]">Actions</TableHead>
@@ -97,19 +98,19 @@ export default async function AdminClustersPage() {
             <TableBody>
               {clusters.map((cluster) => (
                 <TableRow key={cluster.id}>
+                  <TableCell className="hidden sm:table-cell">
+                    {clusterDisplayId(cluster) ? (
+                      <Badge variant="secondary">{clusterDisplayId(cluster)}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">--</span>
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium whitespace-normal">
                     {cluster.name}
                     {cluster.description && (
                       <p className="text-xs text-muted-foreground font-normal">
                         {cluster.description}
                       </p>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {cluster.region ? (
-                      <Badge variant="secondary">{cluster.region}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground">--</span>
                     )}
                   </TableCell>
                   <TableCell>
