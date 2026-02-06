@@ -91,7 +91,7 @@ export default async function AdminBooksPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="hidden sm:table-cell w-[60px]">#</TableHead>
-                <TableHead>Title</TableHead>
+                <TableHead className="whitespace-normal">Title</TableHead>
                 <TableHead className="hidden md:table-cell">Category</TableHead>
                 <TableHead className="hidden lg:table-cell">Status</TableHead>
                 <TableHead>Active</TableHead>
@@ -104,7 +104,7 @@ export default async function AdminBooksPage() {
                   <TableCell className="hidden sm:table-cell text-muted-foreground">
                     {book.book_number ?? book.sort_order}
                   </TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium whitespace-normal">
                     {book.title}
                     {(book.unit ||
                       book.language !== "English") && (

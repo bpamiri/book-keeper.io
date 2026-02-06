@@ -82,7 +82,7 @@ export default async function AdminUsersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead className="whitespace-normal">Name</TableHead>
                 <TableHead className="hidden sm:table-cell">Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead className="hidden md:table-cell">Clusters</TableHead>
@@ -92,7 +92,7 @@ export default async function AdminUsersPage() {
             <TableBody>
               {profiles.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium whitespace-normal">
                     {p.full_name || "Unnamed"}
                     <p className="text-xs text-muted-foreground font-normal sm:hidden">
                       {p.email}

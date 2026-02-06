@@ -65,7 +65,7 @@ export default async function AdminClustersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Clusters</h1>
           <p className="text-muted-foreground">
@@ -86,7 +86,7 @@ export default async function AdminClustersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead className="whitespace-normal">Name</TableHead>
                 <TableHead className="hidden sm:table-cell">Region</TableHead>
                 <TableHead>Members</TableHead>
                 <TableHead className="hidden md:table-cell">Created</TableHead>
@@ -95,7 +95,7 @@ export default async function AdminClustersPage() {
             <TableBody>
               {clusters.map((cluster) => (
                 <TableRow key={cluster.id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium whitespace-normal">
                     {cluster.name}
                     {cluster.description && (
                       <p className="text-xs text-muted-foreground font-normal">
