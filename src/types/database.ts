@@ -52,9 +52,9 @@ export type Database = {
         Row: {
           id: string;
           name: string;
-          state_code: string | null;
+          region_code: string | null;
           sub_region_code: string | null;
-          cluster_number: number | null;
+          cluster_code: string | null;
           description: string | null;
           created_by: string;
           created_at: string;
@@ -63,9 +63,9 @@ export type Database = {
         Insert: {
           id?: string;
           name: string;
-          state_code?: string | null;
+          region_code?: string | null;
           sub_region_code?: string | null;
-          cluster_number?: number | null;
+          cluster_code?: string | null;
           description?: string | null;
           created_by: string;
           created_at?: string;
@@ -74,9 +74,9 @@ export type Database = {
         Update: {
           id?: string;
           name?: string;
-          state_code?: string | null;
+          region_code?: string | null;
           sub_region_code?: string | null;
-          cluster_number?: number | null;
+          cluster_code?: string | null;
           description?: string | null;
           created_by?: string;
           created_at?: string;

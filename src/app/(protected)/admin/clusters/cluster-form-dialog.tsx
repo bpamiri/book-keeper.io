@@ -36,18 +36,17 @@ export function ClusterFormDialog({ mode, cluster, trigger }: ClusterFormDialogP
 
     const formData = new FormData(e.currentTarget);
     const name = formData.get("name") as string;
-    const stateCode = (formData.get("stateCode") as string) || undefined;
+    const regionCode = (formData.get("regionCode") as string) || undefined;
     const subRegionCode = (formData.get("subRegionCode") as string) || undefined;
-    const clusterNumberRaw = formData.get("clusterNumber") as string;
-    const clusterNumber = clusterNumberRaw ? Number(clusterNumberRaw) : undefined;
+    const clusterCode = (formData.get("clusterCode") as string) || undefined;
     const description = (formData.get("description") as string) || undefined;
 
     if (mode === "edit" && cluster) {
       const result = await updateCluster(cluster.id, {
         name,
-        state_code: stateCode || null,
+        region_code: regionCode || null,
         sub_region_code: subRegionCode || null,
-        cluster_number: clusterNumber ?? null,
+        cluster_code: clusterCode || null,
         description: description || null,
       });
 
@@ -62,9 +61,9 @@ export function ClusterFormDialog({ mode, cluster, trigger }: ClusterFormDialogP
 
       const result = await createCluster({
         name,
-        state_code: stateCode || null,
+        region_code: regionCode || null,
         sub_region_code: subRegionCode || null,
-        cluster_number: clusterNumber ?? null,
+        cluster_code: clusterCode || null,
         description: description || null,
       });
 
@@ -136,14 +135,14 @@ export function ClusterFormDialog({ mode, cluster, trigger }: ClusterFormDialogP
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="stateCode">State Code *</Label>
+                <Label htmlFor="regionCode">Region Code *</Label>
                 <Input
-                  id="stateCode"
-                  name="stateCode"
+                  id="regionCode"
+                  name="regionCode"
                   placeholder="CA"
                   maxLength={2}
                   className="uppercase"
-                  defaultValue={cluster?.state_code ?? ""}
+                  defaultValue={cluster?.region_code ?? ""}
                   required
                 />
               </div>
@@ -160,14 +159,14 @@ export function ClusterFormDialog({ mode, cluster, trigger }: ClusterFormDialogP
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="clusterNumber">Number *</Label>
+                <Label htmlFor="clusterCode">Cluster Code *</Label>
                 <Input
-                  id="clusterNumber"
-                  name="clusterNumber"
-                  type="number"
-                  min={1}
-                  placeholder="5"
-                  defaultValue={cluster?.cluster_number ?? ""}
+                  id="clusterCode"
+                  name="clusterCode"
+                  placeholder="05"
+                  maxLength={2}
+                  className="uppercase"
+                  defaultValue={cluster?.cluster_code ?? ""}
                   required
                 />
               </div>
