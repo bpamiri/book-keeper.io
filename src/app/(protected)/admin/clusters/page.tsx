@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -106,7 +107,12 @@ export default async function AdminClustersPage() {
                     )}
                   </TableCell>
                   <TableCell className="font-medium whitespace-normal">
-                    {cluster.name}
+                    <Link
+                      href={`/admin/clusters/${cluster.id}`}
+                      className="hover:underline"
+                    >
+                      {cluster.name}
+                    </Link>
                     {cluster.description && (
                       <p className="text-xs text-muted-foreground font-normal">
                         {cluster.description}
