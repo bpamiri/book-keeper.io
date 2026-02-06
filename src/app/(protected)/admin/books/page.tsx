@@ -86,15 +86,14 @@ export default async function AdminBooksPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-md border overflow-x-auto">
+        <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[60px]">#</TableHead>
+                <TableHead className="hidden sm:table-cell w-[60px]">#</TableHead>
                 <TableHead>Title</TableHead>
-                <TableHead className="hidden sm:table-cell">Category</TableHead>
-                <TableHead className="hidden md:table-cell">Status</TableHead>
-                <TableHead className="hidden lg:table-cell">Language</TableHead>
+                <TableHead className="hidden md:table-cell">Category</TableHead>
+                <TableHead className="hidden lg:table-cell">Status</TableHead>
                 <TableHead>Active</TableHead>
                 <TableHead className="w-[60px]">Edit</TableHead>
               </TableRow>
@@ -102,23 +101,37 @@ export default async function AdminBooksPage() {
             <TableBody>
               {books.map((book) => (
                 <TableRow key={book.id}>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="hidden sm:table-cell text-muted-foreground">
                     {book.book_number ?? book.sort_order}
                   </TableCell>
                   <TableCell className="font-medium">
                     {book.title}
-                    {book.unit && (
+                    {(book.unit ||
+                      book.language !== "English") && (
                       <p className="text-xs text-muted-foreground font-normal">
-                        {book.unit}
+                        {[
+                          book.unit,
+                          book.language !== "English" ? book.language : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </p>
                     )}
+                    <div className="flex gap-1 mt-1 md:hidden">
+                      <Badge
+                        variant={categoryColors[book.category] ?? "outline"}
+                        className="text-[10px] px-1.5 py-0"
+                      >
+                        {categoryLabels[book.category] ?? book.category}
+                      </Badge>
+                    </div>
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell">
+                  <TableCell className="hidden md:table-cell">
                     <Badge variant={categoryColors[book.category] ?? "outline"}>
                       {categoryLabels[book.category] ?? book.category}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden lg:table-cell">
                     <Badge
                       variant={
                         statusVariants[book.publication_status] ?? "outline"
@@ -127,9 +140,6 @@ export default async function AdminBooksPage() {
                       {statusLabels[book.publication_status] ??
                         book.publication_status}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell text-muted-foreground">
-                    {book.language}
                   </TableCell>
                   <TableCell>
                     <BookActiveToggle
