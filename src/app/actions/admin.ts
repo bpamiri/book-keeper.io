@@ -146,6 +146,25 @@ export async function updateRuhiBook(
   }
 }
 
+export async function deleteRuhiBook(id: string) {
+  try {
+    const result = await verifyPlatformAdmin()
+    if ('error' in result) return { error: result.error }
+
+    const { error } = await result.supabase
+      .from('ruhi_books')
+      .delete()
+      .eq('id', id)
+
+    if (error) return { error: error.message }
+
+    revalidatePath('/admin/books')
+    return { data: { success: true } }
+  } catch {
+    return { error: 'Failed to delete book' }
+  }
+}
+
 export async function toggleBookActive(id: string, is_active: boolean) {
   try {
     const result = await verifyPlatformAdmin()

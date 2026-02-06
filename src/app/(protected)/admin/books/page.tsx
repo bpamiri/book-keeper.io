@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Profile, RuhiBook } from "@/types/database";
 import { BookFormDialog } from "./book-form-dialog";
 import { BookActiveToggle } from "./book-active-toggle";
+import { BookActions } from "./book-actions";
 
 const categoryColors: Record<string, "default" | "secondary" | "outline"> = {
   main_sequence: "default",
@@ -95,7 +96,7 @@ export default async function AdminBooksPage() {
                 <TableHead className="hidden md:table-cell">Category</TableHead>
                 <TableHead className="hidden lg:table-cell">Status</TableHead>
                 <TableHead>Active</TableHead>
-                <TableHead className="w-[60px]">Edit</TableHead>
+                <TableHead className="w-[60px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -148,7 +149,7 @@ export default async function AdminBooksPage() {
                     />
                   </TableCell>
                   <TableCell>
-                    <BookFormDialog mode="edit" book={book} />
+                    <BookActions book={book} />
                   </TableCell>
                 </TableRow>
               ))}

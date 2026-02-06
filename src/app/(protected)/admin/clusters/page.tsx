@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { Cluster, Profile } from "@/types/database";
-import { CreateClusterDialog } from "./create-cluster-dialog";
+import { ClusterFormDialog } from "./cluster-form-dialog";
+import { ClusterActions } from "./cluster-actions";
 
 export default async function AdminClustersPage() {
   const supabase = await createClient();
@@ -72,7 +73,7 @@ export default async function AdminClustersPage() {
             Manage geographic clusters and their members.
           </p>
         </div>
-        <CreateClusterDialog />
+        <ClusterFormDialog mode="create" />
       </div>
 
       {clusters.length === 0 ? (
@@ -90,6 +91,7 @@ export default async function AdminClustersPage() {
                 <TableHead className="hidden sm:table-cell">Region</TableHead>
                 <TableHead>Members</TableHead>
                 <TableHead className="hidden md:table-cell">Created</TableHead>
+                <TableHead className="w-[60px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -117,6 +119,9 @@ export default async function AdminClustersPage() {
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground">
                     {new Date(cluster.created_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <ClusterActions cluster={cluster} />
                   </TableCell>
                 </TableRow>
               ))}

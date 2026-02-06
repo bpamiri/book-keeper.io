@@ -33,9 +33,10 @@ import type {
 interface BookFormDialogProps {
   mode: "create" | "edit";
   book?: RuhiBook;
+  trigger?: React.ReactNode;
 }
 
-export function BookFormDialog({ mode, book }: BookFormDialogProps) {
+export function BookFormDialog({ mode, book, trigger }: BookFormDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState<BookCategory>(
@@ -94,7 +95,7 @@ export function BookFormDialog({ mode, book }: BookFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {mode === "create" ? (
+        {trigger ? trigger : mode === "create" ? (
           <Button>
             <Plus className="mr-1 size-4" />
             Add Book
