@@ -92,6 +92,38 @@ export async function inviteMember(data: {
   }
 }
 
+export async function resendInvite(memberId: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { error: 'Not authenticated' }
+
+    const adminClient = createAdminClient()
+    const { data: member, error: fetchError } = await adminClient
+      .from('cluster_members')
+      .select('id, email, status, cluster_id')
+      .eq('id', memberId)
+      .single()
+
+    if (fetchError || !member) return { error: 'Member not found' }
+    if (member.status !== 'pending') return { error: 'Invite can only be resent to pending members' }
+
+    const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
+      member.email,
+      {
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+      }
+    )
+
+    if (inviteError) return { error: inviteError.message }
+
+    revalidatePath(`/clusters/${member.cluster_id}`)
+    return { data: { success: true } }
+  } catch {
+    return { error: 'Failed to resend invite' }
+  }
+}
+
 export async function updateMemberRole(id: string, cluster_role: ClusterRole) {
   try {
     const supabase = await createClient()

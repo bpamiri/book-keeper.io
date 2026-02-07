@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, UserMinus } from "lucide-react";
+import { Plus, UserMinus, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +40,7 @@ import {
   inviteMember,
   updateMemberRole,
   removeMember,
+  resendInvite,
 } from "@/app/actions/members";
 import type { ClusterMember, ClusterRole, Profile } from "@/types/database";
 
@@ -223,7 +224,22 @@ export function MembersClient({
                       {new Date(member.invited_at).toLocaleDateString()}
                     </TableCell>
                     {isAdmin && (
-                      <TableCell>
+                      <TableCell className="space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            const result = await resendInvite(member.id);
+                            if (result.error) {
+                              toast.error(result.error);
+                            } else {
+                              toast.success("Invite resent");
+                            }
+                          }}
+                        >
+                          <RotateCw className="mr-1 size-3" />
+                          Resend
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
