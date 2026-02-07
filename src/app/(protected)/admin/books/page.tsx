@@ -18,12 +18,14 @@ const categoryColors: Record<string, "default" | "secondary" | "outline"> = {
   main_sequence: "default",
   branch_book3: "secondary",
   branch_book5: "outline",
+  junior_youth_text: "secondary",
 };
 
 const categoryLabels: Record<string, string> = {
   main_sequence: "Main Sequence",
   branch_book3: "Branch (Book 3)",
   branch_book5: "Branch (Book 5)",
+  junior_youth_text: "Junior Youth Text",
 };
 
 const statusVariants: Record<string, "default" | "secondary" | "outline"> = {

@@ -170,6 +170,9 @@ export function BookFormDialog({ mode, book, trigger }: BookFormDialogProps) {
                     <SelectItem value="branch_book5">
                       Branch (Book 5)
                     </SelectItem>
+                    <SelectItem value="junior_youth_text">
+                      Junior Youth Text
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

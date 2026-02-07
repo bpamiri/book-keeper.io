@@ -9,7 +9,7 @@
 export type UserRole = 'platform_admin' | 'user';
 export type ClusterRole = 'admin' | 'collaborator';
 export type MemberStatus = 'pending' | 'active';
-export type BookCategory = 'main_sequence' | 'branch_book3' | 'branch_book5';
+export type BookCategory = 'main_sequence' | 'branch_book3' | 'branch_book5' | 'junior_youth_text';
 export type PublicationStatus = 'published' | 'pre_publication' | 'in_development';
 export type ChangeType = 'added' | 'removed' | 'transferred' | 'adjustment' | 'fulfilled';
 export type RequestStatus = 'pending' | 'approved' | 'fulfilled' | 'denied';
