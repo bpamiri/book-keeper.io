@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { toggleBookActive } from "@/app/actions/admin";
@@ -12,6 +12,10 @@ interface BookActiveToggleProps {
 
 export function BookActiveToggle({ bookId, isActive }: BookActiveToggleProps) {
   const [active, setActive] = useState(isActive);
+
+  useEffect(() => {
+    setActive(isActive);
+  }, [isActive]);
   const [loading, setLoading] = useState(false);
 
   async function handleToggle() {
