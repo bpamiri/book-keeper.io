@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getAppUrl } from '@/lib/utils'
 import type { ClusterRole } from '@/types/database'
 
 export async function inviteMember(data: {
@@ -74,7 +75,7 @@ export async function inviteMember(data: {
       const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
         email,
         {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+          redirectTo: `${getAppUrl()}/auth/callback`,
         }
       )
 
@@ -111,7 +112,7 @@ export async function resendInvite(memberId: string) {
     const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
       member.email,
       {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+        redirectTo: `${getAppUrl()}/auth/callback`,
       }
     )
 

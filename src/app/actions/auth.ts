@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getAppUrl } from '@/lib/utils'
 
 export async function loginWithMagicLink(email: string) {
   const supabase = await createClient()
@@ -9,7 +10,7 @@ export async function loginWithMagicLink(email: string) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+      emailRedirectTo: `${getAppUrl()}/auth/callback`,
     },
   })
 
@@ -26,7 +27,7 @@ export async function signup(email: string, fullName: string) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+      emailRedirectTo: `${getAppUrl()}/auth/callback`,
       data: {
         full_name: fullName,
       },
