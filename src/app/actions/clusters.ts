@@ -41,6 +41,19 @@ export async function createCluster(data: {
 
     if (error) return { error: error.message }
 
+    // Add creator as cluster admin
+    await supabase
+      .from('cluster_members')
+      .insert({
+        cluster_id: cluster.id,
+        user_id: user.id,
+        email: user.email!,
+        cluster_role: 'admin' as const,
+        status: 'active' as const,
+        invited_by: user.id,
+        joined_at: new Date().toISOString(),
+      })
+
     revalidatePath('/dashboard')
     revalidatePath('/admin/clusters')
     return { data: cluster }
