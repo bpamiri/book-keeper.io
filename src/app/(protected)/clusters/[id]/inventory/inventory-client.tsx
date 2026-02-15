@@ -32,6 +32,12 @@ import {
 import { addStock, updateQuantity, transferStock } from "@/app/actions/inventory";
 import type { Inventory, RuhiBook, StorageLocation } from "@/types/database";
 
+function bookLabel(b: RuhiBook) {
+  if (b.category === "junior_youth_text") return `JYSEP: ${b.title}`;
+  if (b.book_number) return `Book ${b.book_number}: ${b.title}`;
+  return b.title;
+}
+
 interface InventoryClientProps {
   clusterId: string;
   inventory: Inventory[];
@@ -93,8 +99,7 @@ export function InventoryClient({
               <SelectItem value="all">All Books</SelectItem>
               {books.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
-                  {b.book_number ? `Book ${b.book_number}: ` : ""}
-                  {b.title}
+                  {bookLabel(b)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -288,8 +293,7 @@ function AddStockDialog({
               <SelectContent>
                 {books.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
-                    {b.book_number ? `Book ${b.book_number}: ` : ""}
-                    {b.title}
+                    {bookLabel(b)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -424,8 +428,7 @@ function TransferDialog({
               <SelectContent>
                 {books.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
-                    {b.book_number ? `Book ${b.book_number}: ` : ""}
-                    {b.title}
+                    {bookLabel(b)}
                   </SelectItem>
                 ))}
               </SelectContent>
