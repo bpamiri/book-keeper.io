@@ -41,6 +41,7 @@ export default async function InventoryPage({
       .from("ruhi_books")
       .select("*")
       .order("category")
+      .order("book_number", { nullsFirst: false })
       .order("title"),
     supabase
       .from("storage_locations")
