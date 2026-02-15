@@ -40,7 +40,6 @@ export default async function InventoryPage({
     supabase
       .from("ruhi_books")
       .select("*")
-      .eq("is_active", true)
       .order("category")
       .order("title"),
     supabase
