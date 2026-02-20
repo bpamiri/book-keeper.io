@@ -250,3 +250,85 @@ export async function transferStock(data: {
     return { error: 'Failed to transfer stock' }
   }
 }
+
+export async function bulkAddStock(data: {
+  cluster_id: string
+  items: Array<{
+    storage_location_id: string
+    ruhi_book_id: string
+    quantity: number
+  }>
+  notes?: string | null
+}) {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { error: 'Not authenticated' }
+
+    if (!data.items.length) return { error: 'No items provided' }
+
+    for (const item of data.items) {
+      if (item.quantity <= 0) return { error: 'All quantities must be positive' }
+    }
+
+    let processed = 0
+
+    for (const item of data.items) {
+      const { data: existing } = await supabase
+        .from('inventory')
+        .select('id, quantity')
+        .eq('cluster_id', data.cluster_id)
+        .eq('storage_location_id', item.storage_location_id)
+        .eq('ruhi_book_id', item.ruhi_book_id)
+        .single()
+
+      const previousQuantity = existing?.quantity ?? 0
+      const newQuantity = previousQuantity + item.quantity
+
+      if (existing) {
+        const { error } = await supabase
+          .from('inventory')
+          .update({
+            quantity: newQuantity,
+            notes: data.notes ?? undefined,
+            updated_by: user.id,
+          })
+          .eq('id', existing.id)
+
+        if (error) return { error: `Failed on item ${processed + 1}: ${error.message}` }
+      } else {
+        const { error } = await supabase
+          .from('inventory')
+          .insert({
+            cluster_id: data.cluster_id,
+            storage_location_id: item.storage_location_id,
+            ruhi_book_id: item.ruhi_book_id,
+            quantity: item.quantity,
+            notes: data.notes ?? null,
+            updated_by: user.id,
+          })
+
+        if (error) return { error: `Failed on item ${processed + 1}: ${error.message}` }
+      }
+
+      await supabase.from('inventory_log').insert({
+        cluster_id: data.cluster_id,
+        storage_location_id: item.storage_location_id,
+        ruhi_book_id: item.ruhi_book_id,
+        change_type: 'added' as const,
+        quantity_change: item.quantity,
+        previous_quantity: previousQuantity,
+        new_quantity: newQuantity,
+        notes: data.notes ?? 'Bulk add',
+        performed_by: user.id,
+      })
+
+      processed++
+    }
+
+    revalidatePath(`/clusters/${data.cluster_id}`)
+    return { data: { success: true, processed } }
+  } catch {
+    return { error: 'Failed to bulk add stock' }
+  }
+}
