@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { Search, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,12 +66,71 @@ export function RequestsClient({
     null
   );
   const [tab, setTab] = useState("all");
+  const [search, setSearch] = useState("");
 
-  const filtered =
+  const byTab =
     tab === "all" ? requests : requests.filter((r) => r.status === tab);
+
+  const filtered = byTab.filter((req) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    const book = bookMap[req.ruhi_book_id];
+    const requester = profileMap[req.requested_by];
+    const searchable = [
+      book?.title,
+      book?.book_number ? `Book ${book.book_number}` : null,
+      requester?.full_name,
+      requester?.email,
+      req.purpose,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return searchable.includes(q);
+  });
+
+  function exportCsv() {
+    const rows = [["Book", "Requested By", "Qty", "Purpose", "Status", "Date"]];
+    for (const req of filtered) {
+      const book = bookMap[req.ruhi_book_id];
+      const requester = profileMap[req.requested_by];
+      rows.push([
+        book?.book_number ? `Book ${book.book_number}: ${book.title}` : book?.title ?? "Unknown",
+        requester?.full_name || requester?.email || "Unknown",
+        String(req.quantity_requested),
+        req.purpose || "",
+        req.status,
+        new Date(req.created_at).toLocaleDateString(),
+      ]);
+    }
+    const csv = rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "requests.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by book, person, or purpose..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button size="sm" variant="outline" onClick={exportCsv}>
+          <Download className="mr-1 size-4" />
+          Export
+        </Button>
+      </div>
+
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="all">All ({requests.length})</TabsTrigger>

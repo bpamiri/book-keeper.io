@@ -6,6 +6,7 @@ import {
   Users,
   Package,
   ClipboardList,
+  History,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,12 @@ export default async function ClusterDetailPage({
       description: `${memberCount} members`,
       href: `/clusters/${id}/members`,
       icon: Users,
+    },
+    {
+      title: "Activity Log",
+      description: "Recent inventory changes",
+      href: `/clusters/${id}/activity`,
+      icon: History,
     },
   ];
 
