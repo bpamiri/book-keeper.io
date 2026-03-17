@@ -37,19 +37,24 @@ export function InviteAcceptClient({ clusterNames, existingName }: InviteAcceptC
     if (!trimmed) return
 
     setLoading(true)
-    const result = await acceptInvite(trimmed)
-    setLoading(false)
+    try {
+      const result = await acceptInvite(trimmed)
 
-    if (result.error) {
-      toast.error(result.error)
-      return
-    }
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
 
-    const clusterId = result.data?.clusterId
-    if (clusterId) {
-      router.push(`/clusters/${clusterId}`)
-    } else {
-      router.push('/dashboard')
+      const clusterId = result.data?.clusterId
+      if (clusterId) {
+        router.push(`/clusters/${clusterId}`)
+      } else {
+        router.push('/dashboard')
+      }
+    } catch {
+      toast.error('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
