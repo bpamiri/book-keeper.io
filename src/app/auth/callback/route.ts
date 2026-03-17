@@ -30,8 +30,17 @@ export async function GET(request: Request) {
       data: { user },
     } = await supabase.auth.getUser()
 
+    // For invite flows, redirect to the accept page (skip member activation)
+    if (type === 'invite') {
+      const forwardedHost = request.headers.get('x-forwarded-host')
+      const isLocalEnv = process.env.NODE_ENV === 'development'
+      const baseUrl = isLocalEnv ? origin : forwardedHost ? `https://${forwardedHost}` : origin
+
+      return NextResponse.redirect(`${baseUrl}/invite/accept`)
+    }
+
+    // For non-invite flows (magic link, OAuth), activate pending members as before
     if (user?.email) {
-      // Match pending invites by email using admin client (bypasses RLS)
       const admin = createAdminClient()
       await admin
         .from('cluster_members')
