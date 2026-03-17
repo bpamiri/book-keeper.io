@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Sidebar } from "@/components/sidebar";
 import { UserNav } from "@/components/user-nav";
 import { MobileNav } from "@/components/mobile-nav";
@@ -30,6 +31,21 @@ export default async function ProtectedLayout({
 
   if (!rawProfile) {
     redirect("/login");
+  }
+
+  // Guard: redirect incomplete invite profiles to /invite/accept
+  if (!rawProfile.full_name) {
+    const adminClient = createAdminClient();
+    const { data: pendingInvites } = await adminClient
+      .from("cluster_members")
+      .select("id")
+      .eq("email", user.email!)
+      .eq("status", "pending")
+      .limit(1);
+
+    if (pendingInvites && pendingInvites.length > 0) {
+      redirect("/invite/accept");
+    }
   }
 
   const typedProfile = rawProfile as unknown as Profile;
