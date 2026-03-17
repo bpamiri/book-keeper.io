@@ -175,3 +175,45 @@ export async function removeMember(id: string) {
     return { error: 'Failed to remove member' }
   }
 }
+
+export async function acceptInvite(fullName: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { error: 'Not authenticated' }
+
+    const trimmedName = fullName.trim()
+    if (!trimmedName) return { error: 'Name is required' }
+
+    // Update the user's profile name
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ full_name: trimmedName })
+      .eq('id', user.id)
+
+    if (profileError) return { error: profileError.message }
+
+    // Activate all pending cluster memberships (admin client bypasses RLS)
+    const adminClient = createAdminClient()
+    const { data: activated, error: activateError } = await adminClient
+      .from('cluster_members')
+      .update({
+        user_id: user.id,
+        status: 'active',
+        joined_at: new Date().toISOString(),
+      })
+      .eq('email', user.email!)
+      .eq('status', 'pending')
+      .select('cluster_id')
+
+    if (activateError) return { error: activateError.message }
+
+    // Return first cluster ID for redirect, or null if none activated
+    const clusterId = activated && activated.length > 0 ? activated[0].cluster_id : null
+    if (clusterId) revalidatePath(`/clusters/${clusterId}`)
+
+    return { data: { clusterId } }
+  } catch {
+    return { error: 'Failed to accept invite' }
+  }
+}
