@@ -23,16 +23,22 @@ export default async function InventoryPage({
 
   if (!user) redirect("/login");
 
-  const { data: rawMembership } = await supabase
-    .from("cluster_members")
-    .select("*")
-    .eq("cluster_id", id)
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .single();
+  const [membershipResult, profileResult] = await Promise.all([
+    supabase
+      .from("cluster_members")
+      .select("*")
+      .eq("cluster_id", id)
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .single(),
+    supabase.from("profiles").select("role").eq("id", user.id).single(),
+  ]);
 
-  if (!rawMembership) redirect("/dashboard");
-  const membership = rawMembership as unknown as ClusterMember;
+  const rawMembership = membershipResult.data;
+  const isPlatformAdmin = profileResult.data?.role === "platform_admin";
+
+  if (!rawMembership && !isPlatformAdmin) redirect("/dashboard");
+  const membership = rawMembership as unknown as ClusterMember | null;
 
   // Fetch inventory, books, and locations
   const [inventoryResult, booksResult, locationsResult] = await Promise.all([
@@ -75,7 +81,8 @@ export default async function InventoryPage({
         inventory={inventory}
         books={books}
         locations={locations}
-        isAdmin={membership.cluster_role === "admin"}
+        isAdmin={membership?.cluster_role === "admin"}
+        isPlatformAdmin={isPlatformAdmin}
       />
     </div>
   );
