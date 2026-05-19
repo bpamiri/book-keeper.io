@@ -23,7 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createRequest } from "@/app/actions/requests";
-import type { RuhiBook } from "@/types/database";
+import { BOOK_LANGUAGES, DEFAULT_BOOK_LANGUAGE } from "@/lib/languages";
+import type { BookLanguage, RuhiBook } from "@/types/database";
 
 type BookWithAvailability = RuhiBook & { available: number };
 
@@ -37,6 +38,7 @@ export function RequestBookForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [bookId, setBookId] = useState("");
+  const [language, setLanguage] = useState<BookLanguage>(DEFAULT_BOOK_LANGUAGE);
   const [quantity, setQuantity] = useState("");
   const [purpose, setPurpose] = useState("");
 
@@ -53,6 +55,7 @@ export function RequestBookForm({
     const result = await createRequest({
       cluster_id: clusterId,
       ruhi_book_id: bookId,
+      language,
       quantity_requested: qty,
       purpose: purpose || null,
     });
@@ -98,10 +101,28 @@ export function RequestBookForm({
             </Select>
             {selectedBook && (
               <p className="text-sm text-muted-foreground">
-                {selectedBook.available} copies currently available in this
-                cluster.
+                {selectedBook.available} copies currently available across all
+                languages in this cluster.
               </p>
             )}
+          </div>
+          <div className="space-y-2">
+            <Label>Language</Label>
+            <Select
+              value={language}
+              onValueChange={(v) => setLanguage(v as BookLanguage)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BOOK_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang} value={lang}>
+                    {lang}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label>Quantity Needed</Label>

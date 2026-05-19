@@ -13,6 +13,7 @@ export type BookCategory = 'main_sequence' | 'branch_book3' | 'branch_book5' | '
 export type PublicationStatus = 'published' | 'pre_publication' | 'in_development';
 export type ChangeType = 'added' | 'removed' | 'transferred' | 'adjustment' | 'fulfilled';
 export type RequestStatus = 'pending' | 'approved' | 'fulfilled' | 'denied';
+export type BookLanguage = 'English' | 'Spanish' | 'Farsi' | 'Chinese';
 
 // ------------------------------------------------------------
 // Database Type (Supabase conventions)
@@ -261,6 +262,7 @@ export type Database = {
           cluster_id: string;
           storage_location_id: string;
           ruhi_book_id: string;
+          language: BookLanguage;
           quantity: number;
           notes: string | null;
           updated_by: string;
@@ -272,6 +274,7 @@ export type Database = {
           cluster_id: string;
           storage_location_id: string;
           ruhi_book_id: string;
+          language?: BookLanguage;
           quantity?: number;
           notes?: string | null;
           updated_by: string;
@@ -283,6 +286,7 @@ export type Database = {
           cluster_id?: string;
           storage_location_id?: string;
           ruhi_book_id?: string;
+          language?: BookLanguage;
           quantity?: number;
           notes?: string | null;
           updated_by?: string;
@@ -325,6 +329,7 @@ export type Database = {
           id: string;
           cluster_id: string;
           ruhi_book_id: string;
+          language: BookLanguage;
           quantity_requested: number;
           requested_by: string;
           purpose: string | null;
@@ -339,6 +344,7 @@ export type Database = {
           id?: string;
           cluster_id: string;
           ruhi_book_id: string;
+          language?: BookLanguage;
           quantity_requested: number;
           requested_by: string;
           purpose?: string | null;
@@ -353,6 +359,7 @@ export type Database = {
           id?: string;
           cluster_id?: string;
           ruhi_book_id?: string;
+          language?: BookLanguage;
           quantity_requested?: number;
           requested_by?: string;
           purpose?: string | null;
@@ -452,6 +459,7 @@ export type Database = {
           cluster_id: string;
           storage_location_id: string;
           ruhi_book_id: string;
+          language: BookLanguage;
           change_type: ChangeType;
           quantity_change: number;
           previous_quantity: number;
@@ -467,6 +475,7 @@ export type Database = {
           cluster_id: string;
           storage_location_id: string;
           ruhi_book_id: string;
+          language?: BookLanguage;
           change_type: ChangeType;
           quantity_change: number;
           previous_quantity: number;
@@ -482,6 +491,7 @@ export type Database = {
           cluster_id?: string;
           storage_location_id?: string;
           ruhi_book_id?: string;
+          language?: BookLanguage;
           change_type?: ChangeType;
           quantity_change?: number;
           previous_quantity?: number;
@@ -561,6 +571,7 @@ export type Database = {
       publication_status: PublicationStatus;
       change_type: ChangeType;
       request_status: RequestStatus;
+      book_language: BookLanguage;
     };
   };
 };

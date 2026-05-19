@@ -79,6 +79,7 @@ export function RequestsClient({
     const searchable = [
       book?.title,
       book?.book_number ? `Book ${book.book_number}` : null,
+      req.language,
       requester?.full_name,
       requester?.email,
       req.purpose,
@@ -90,12 +91,13 @@ export function RequestsClient({
   });
 
   function exportCsv() {
-    const rows = [["Book", "Requested By", "Qty", "Purpose", "Status", "Date"]];
+    const rows = [["Book", "Language", "Requested By", "Qty", "Purpose", "Status", "Date"]];
     for (const req of filtered) {
       const book = bookMap[req.ruhi_book_id];
       const requester = profileMap[req.requested_by];
       rows.push([
         book?.book_number ? `Book ${book.book_number}: ${book.title}` : book?.title ?? "Unknown",
+        req.language,
         requester?.full_name || requester?.email || "Unknown",
         String(req.quantity_requested),
         req.purpose || "",
@@ -155,6 +157,7 @@ export function RequestsClient({
               <TableHeader>
                 <TableRow>
                   <TableHead>Book</TableHead>
+                  <TableHead>Language</TableHead>
                   <TableHead>Requested By</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
                   <TableHead className="hidden md:table-cell">
@@ -169,7 +172,7 @@ export function RequestsClient({
                 {filtered.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={isAdmin ? 7 : 6}
+                      colSpan={isAdmin ? 8 : 7}
                       className="h-24 text-center"
                     >
                       No requests found.
@@ -185,6 +188,11 @@ export function RequestsClient({
                           {book?.book_number
                             ? `Book ${book.book_number}`
                             : book?.title ?? "Unknown"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="font-normal">
+                            {req.language}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           {requester?.full_name || requester?.email || "Unknown"}
@@ -314,9 +322,11 @@ function FulfillDialog({
   const [loading, setLoading] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, string>>({});
 
-  // Filter inventory to only this book
+  // Filter inventory to only this book + the requested language
   const bookInventory = inventory.filter(
-    (inv) => inv.ruhi_book_id === request.ruhi_book_id
+    (inv) =>
+      inv.ruhi_book_id === request.ruhi_book_id &&
+      inv.language === request.language
   );
   const locationInventoryMap = new Map(
     bookInventory.map((inv) => [inv.storage_location_id, inv.quantity])
@@ -370,7 +380,7 @@ function FulfillDialog({
           <DialogTitle>Fulfill Request</DialogTitle>
           <DialogDescription>
             {book?.book_number ? `Book ${book.book_number}: ` : ""}
-            {book?.title ?? "Unknown"} &mdash;{" "}
+            {book?.title ?? "Unknown"} ({request.language}) &mdash;{" "}
             {request.quantity_requested} copies needed
           </DialogDescription>
         </DialogHeader>
