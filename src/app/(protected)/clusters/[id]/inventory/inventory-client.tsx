@@ -39,7 +39,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { addStock, updateQuantity, transferStock, bulkAddStock } from "@/app/actions/inventory";
-import type { Inventory, RuhiBook, StorageLocation } from "@/types/database";
+import { BOOK_LANGUAGES, DEFAULT_BOOK_LANGUAGE } from "@/lib/languages";
+import type { BookLanguage, Inventory, RuhiBook, StorageLocation } from "@/types/database";
 
 const LOW_STOCK_THRESHOLD = 5;
 
@@ -66,6 +67,7 @@ export function InventoryClient({
 }: InventoryClientProps) {
   const [filterBook, setFilterBook] = useState<string>("all");
   const [filterLocation, setFilterLocation] = useState<string>("all");
+  const [filterLanguage, setFilterLanguage] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -80,6 +82,7 @@ export function InventoryClient({
     if (filterBook !== "all" && item.ruhi_book_id !== filterBook) return false;
     if (filterLocation !== "all" && item.storage_location_id !== filterLocation)
       return false;
+    if (filterLanguage !== "all" && item.language !== filterLanguage) return false;
     if (search) {
       const q = search.toLowerCase();
       const book = bookMap.get(item.ruhi_book_id);
@@ -88,6 +91,7 @@ export function InventoryClient({
         book?.title,
         book?.book_number ? `Book ${book.book_number}` : null,
         location?.name,
+        item.language,
       ]
         .filter(Boolean)
         .join(" ")
@@ -102,12 +106,13 @@ export function InventoryClient({
   );
 
   function exportCsv() {
-    const rows = [["Book", "Location", "Quantity", "Last Updated"]];
+    const rows = [["Book", "Language", "Location", "Quantity", "Last Updated"]];
     for (const item of filtered) {
       const book = bookMap.get(item.ruhi_book_id);
       const location = locationMap.get(item.storage_location_id);
       rows.push([
         book ? bookLabel(book) : "Unknown",
+        item.language,
         location?.name ?? "Unknown",
         String(item.quantity),
         new Date(item.updated_at).toLocaleDateString(),
@@ -154,9 +159,10 @@ export function InventoryClient({
               {lowStockItems
                 .map((item) => {
                   const book = bookMap.get(item.ruhi_book_id);
-                  return book?.book_number
-                    ? `Book ${book.book_number} (${item.quantity})`
-                    : `${book?.title ?? "Unknown"} (${item.quantity})`;
+                  const base = book?.book_number
+                    ? `Book ${book.book_number}`
+                    : book?.title ?? "Unknown";
+                  return `${base} (${item.language}, ${item.quantity})`;
                 })
                 .join(", ")}
             </p>
@@ -185,6 +191,22 @@ export function InventoryClient({
               {books.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
                   {bookLabel(b)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-sm whitespace-nowrap">Language:</Label>
+          <Select value={filterLanguage} onValueChange={setFilterLanguage}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Languages</SelectItem>
+              {BOOK_LANGUAGES.map((lang) => (
+                <SelectItem key={lang} value={lang}>
+                  {lang}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -245,6 +267,7 @@ export function InventoryClient({
           <TableHeader>
             <TableRow>
               <TableHead>Book</TableHead>
+              <TableHead>Language</TableHead>
               <TableHead>Location</TableHead>
               <TableHead className="text-right">Quantity</TableHead>
               <TableHead className="hidden sm:table-cell">
@@ -255,7 +278,7 @@ export function InventoryClient({
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   No inventory records found.
                 </TableCell>
               </TableRow>
@@ -288,6 +311,11 @@ export function InventoryClient({
                           {book.title}
                         </div>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="font-normal">
+                        {item.language}
+                      </Badge>
                     </TableCell>
                     <TableCell>{location?.name ?? "Unknown"}</TableCell>
                     <TableCell className="text-right">
@@ -346,6 +374,7 @@ function AddStockDialog({
 }) {
   const [loading, setLoading] = useState(false);
   const [bookId, setBookId] = useState("");
+  const [language, setLanguage] = useState<BookLanguage>(DEFAULT_BOOK_LANGUAGE);
   const [locationId, setLocationId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [notes, setNotes] = useState("");
@@ -362,6 +391,7 @@ function AddStockDialog({
       cluster_id: clusterId,
       storage_location_id: locationId,
       ruhi_book_id: bookId,
+      language,
       quantity: qty,
       notes: notes || null,
     });
@@ -372,6 +402,7 @@ function AddStockDialog({
       toast.success("Stock added successfully");
       onOpenChange(false);
       setBookId("");
+      setLanguage(DEFAULT_BOOK_LANGUAGE);
       setLocationId("");
       setQuantity("");
       setNotes("");
@@ -404,6 +435,24 @@ function AddStockDialog({
                 {books.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     {bookLabel(b)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Language</Label>
+            <Select
+              value={language}
+              onValueChange={(v) => setLanguage(v as BookLanguage)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BOOK_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang} value={lang}>
+                    {lang}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -453,6 +502,7 @@ function AddStockDialog({
 
 interface BulkRow {
   bookId: string;
+  language: BookLanguage;
   locationId: string;
   quantity: string;
 }
@@ -473,18 +523,25 @@ function BulkAddDialog({
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState("");
   const [rows, setRows] = useState<BulkRow[]>([
-    { bookId: "", locationId: "", quantity: "" },
+    { bookId: "", language: DEFAULT_BOOK_LANGUAGE, locationId: "", quantity: "" },
   ]);
 
   function addRow() {
-    setRows((prev) => [...prev, { bookId: "", locationId: "", quantity: "" }]);
+    setRows((prev) => [
+      ...prev,
+      { bookId: "", language: DEFAULT_BOOK_LANGUAGE, locationId: "", quantity: "" },
+    ]);
   }
 
   function removeRow(index: number) {
     setRows((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function updateRow(index: number, field: keyof BulkRow, value: string) {
+  function updateRow<K extends keyof BulkRow>(
+    index: number,
+    field: K,
+    value: BulkRow[K]
+  ) {
     setRows((prev) =>
       prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
     );
@@ -496,6 +553,7 @@ function BulkAddDialog({
       .map((row) => ({
         storage_location_id: row.locationId,
         ruhi_book_id: row.bookId,
+        language: row.language,
         quantity: parseInt(row.quantity, 10) || 0,
       }))
       .filter((item) => item.storage_location_id && item.ruhi_book_id && item.quantity > 0);
@@ -518,7 +576,9 @@ function BulkAddDialog({
     } else {
       toast.success(`${items.length} items added successfully`);
       onOpenChange(false);
-      setRows([{ bookId: "", locationId: "", quantity: "" }]);
+      setRows([
+        { bookId: "", language: DEFAULT_BOOK_LANGUAGE, locationId: "", quantity: "" },
+      ]);
       setNotes("");
     }
   }
@@ -531,7 +591,7 @@ function BulkAddDialog({
           Bulk Add
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Bulk Add Stock</DialogTitle>
           <DialogDescription>
@@ -557,6 +617,28 @@ function BulkAddDialog({
                       {books.map((b) => (
                         <SelectItem key={b.id} value={b.id}>
                           {bookLabel(b)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-32 space-y-1">
+                  {index === 0 && (
+                    <Label className="text-xs">Language</Label>
+                  )}
+                  <Select
+                    value={row.language}
+                    onValueChange={(v) =>
+                      updateRow(index, "language", v as BookLanguage)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BOOK_LANGUAGES.map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                          {lang}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -652,6 +734,7 @@ function TransferDialog({
 }) {
   const [loading, setLoading] = useState(false);
   const [bookId, setBookId] = useState("");
+  const [language, setLanguage] = useState<BookLanguage>(DEFAULT_BOOK_LANGUAGE);
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -659,7 +742,9 @@ function TransferDialog({
 
   const sourceItem = inventory.find(
     (i) =>
-      i.ruhi_book_id === bookId && i.storage_location_id === fromId
+      i.ruhi_book_id === bookId &&
+      i.storage_location_id === fromId &&
+      i.language === language
   );
   const maxQty = sourceItem?.quantity ?? 0;
 
@@ -680,6 +765,7 @@ function TransferDialog({
       from_location_id: fromId,
       to_location_id: toId,
       ruhi_book_id: bookId,
+      language,
       quantity: qty,
       notes: notes || null,
     });
@@ -690,6 +776,7 @@ function TransferDialog({
       toast.success("Stock transferred successfully");
       onOpenChange(false);
       setBookId("");
+      setLanguage(DEFAULT_BOOK_LANGUAGE);
       setFromId("");
       setToId("");
       setQuantity("");
@@ -723,6 +810,24 @@ function TransferDialog({
                 {books.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     {bookLabel(b)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Language</Label>
+            <Select
+              value={language}
+              onValueChange={(v) => setLanguage(v as BookLanguage)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BOOK_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang} value={lang}>
+                    {lang}
                   </SelectItem>
                 ))}
               </SelectContent>

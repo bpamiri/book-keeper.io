@@ -2,11 +2,14 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { DEFAULT_BOOK_LANGUAGE } from '@/lib/languages'
+import type { BookLanguage } from '@/types/database'
 
 export async function addStock(data: {
   cluster_id: string
   storage_location_id: string
   ruhi_book_id: string
+  language: BookLanguage
   quantity: number
   notes?: string | null
 }) {
@@ -17,13 +20,16 @@ export async function addStock(data: {
 
     if (data.quantity <= 0) return { error: 'Quantity must be positive' }
 
-    // Check if inventory record already exists for this book at this location
+    const language = data.language ?? DEFAULT_BOOK_LANGUAGE
+
+    // Check if inventory record already exists for this book+language at this location
     const { data: existing } = await supabase
       .from('inventory')
       .select('id, quantity')
       .eq('cluster_id', data.cluster_id)
       .eq('storage_location_id', data.storage_location_id)
       .eq('ruhi_book_id', data.ruhi_book_id)
+      .eq('language', language)
       .single()
 
     let inventoryRecord
@@ -53,6 +59,7 @@ export async function addStock(data: {
           cluster_id: data.cluster_id,
           storage_location_id: data.storage_location_id,
           ruhi_book_id: data.ruhi_book_id,
+          language,
           quantity: data.quantity,
           notes: data.notes ?? null,
           updated_by: user.id,
@@ -69,6 +76,7 @@ export async function addStock(data: {
       cluster_id: data.cluster_id,
       storage_location_id: data.storage_location_id,
       ruhi_book_id: data.ruhi_book_id,
+      language,
       change_type: 'added' as const,
       quantity_change: data.quantity,
       previous_quantity: previousQuantity,
@@ -126,6 +134,7 @@ export async function updateQuantity(
       cluster_id: current.cluster_id,
       storage_location_id: current.storage_location_id,
       ruhi_book_id: current.ruhi_book_id,
+      language: current.language,
       change_type: 'adjustment' as const,
       quantity_change: quantityChange,
       previous_quantity: previousQuantity,
@@ -146,6 +155,7 @@ export async function transferStock(data: {
   from_location_id: string
   to_location_id: string
   ruhi_book_id: string
+  language: BookLanguage
   quantity: number
   notes?: string | null
 }) {
@@ -159,6 +169,8 @@ export async function transferStock(data: {
       return { error: 'Source and destination locations must be different' }
     }
 
+    const language = data.language ?? DEFAULT_BOOK_LANGUAGE
+
     // Get source inventory
     const { data: source, error: sourceError } = await supabase
       .from('inventory')
@@ -166,6 +178,7 @@ export async function transferStock(data: {
       .eq('cluster_id', data.cluster_id)
       .eq('storage_location_id', data.from_location_id)
       .eq('ruhi_book_id', data.ruhi_book_id)
+      .eq('language', language)
       .single()
 
     if (sourceError || !source) return { error: 'Source inventory not found' }
@@ -190,6 +203,7 @@ export async function transferStock(data: {
       .eq('cluster_id', data.cluster_id)
       .eq('storage_location_id', data.to_location_id)
       .eq('ruhi_book_id', data.ruhi_book_id)
+      .eq('language', language)
       .single()
 
     const destPrevQuantity = dest?.quantity ?? 0
@@ -209,6 +223,7 @@ export async function transferStock(data: {
           cluster_id: data.cluster_id,
           storage_location_id: data.to_location_id,
           ruhi_book_id: data.ruhi_book_id,
+          language,
           quantity: data.quantity,
           updated_by: user.id,
         })
@@ -224,6 +239,7 @@ export async function transferStock(data: {
         cluster_id: data.cluster_id,
         storage_location_id: data.from_location_id,
         ruhi_book_id: data.ruhi_book_id,
+        language,
         change_type: 'transferred' as const,
         quantity_change: -data.quantity,
         previous_quantity: source.quantity,
@@ -235,6 +251,7 @@ export async function transferStock(data: {
         cluster_id: data.cluster_id,
         storage_location_id: data.to_location_id,
         ruhi_book_id: data.ruhi_book_id,
+        language,
         change_type: 'transferred' as const,
         quantity_change: data.quantity,
         previous_quantity: destPrevQuantity,
@@ -256,6 +273,7 @@ export async function bulkAddStock(data: {
   items: Array<{
     storage_location_id: string
     ruhi_book_id: string
+    language: BookLanguage
     quantity: number
   }>
   notes?: string | null
@@ -274,12 +292,14 @@ export async function bulkAddStock(data: {
     let processed = 0
 
     for (const item of data.items) {
+      const language = item.language ?? DEFAULT_BOOK_LANGUAGE
       const { data: existing } = await supabase
         .from('inventory')
         .select('id, quantity')
         .eq('cluster_id', data.cluster_id)
         .eq('storage_location_id', item.storage_location_id)
         .eq('ruhi_book_id', item.ruhi_book_id)
+        .eq('language', language)
         .single()
 
       const previousQuantity = existing?.quantity ?? 0
@@ -303,6 +323,7 @@ export async function bulkAddStock(data: {
             cluster_id: data.cluster_id,
             storage_location_id: item.storage_location_id,
             ruhi_book_id: item.ruhi_book_id,
+            language,
             quantity: item.quantity,
             notes: data.notes ?? null,
             updated_by: user.id,
@@ -315,6 +336,7 @@ export async function bulkAddStock(data: {
         cluster_id: data.cluster_id,
         storage_location_id: item.storage_location_id,
         ruhi_book_id: item.ruhi_book_id,
+        language,
         change_type: 'added' as const,
         quantity_change: item.quantity,
         previous_quantity: previousQuantity,

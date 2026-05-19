@@ -2,10 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { DEFAULT_BOOK_LANGUAGE } from '@/lib/languages'
+import type { BookLanguage } from '@/types/database'
 
 export async function createRequest(data: {
   cluster_id: string
   ruhi_book_id: string
+  language: BookLanguage
   quantity_requested: number
   purpose?: string | null
 }) {
@@ -23,6 +26,7 @@ export async function createRequest(data: {
       .insert({
         cluster_id: data.cluster_id,
         ruhi_book_id: data.ruhi_book_id,
+        language: data.language ?? DEFAULT_BOOK_LANGUAGE,
         quantity_requested: data.quantity_requested,
         requested_by: user.id,
         purpose: data.purpose ?? null,
@@ -154,6 +158,7 @@ export async function fulfillRequest(data: {
         .eq('cluster_id', request.cluster_id)
         .eq('storage_location_id', line.storage_location_id)
         .eq('ruhi_book_id', request.ruhi_book_id)
+        .eq('language', request.language)
         .single()
 
       if (invError || !inv) {
@@ -173,6 +178,7 @@ export async function fulfillRequest(data: {
         .eq('cluster_id', request.cluster_id)
         .eq('storage_location_id', line.storage_location_id)
         .eq('ruhi_book_id', request.ruhi_book_id)
+        .eq('language', request.language)
         .single()
 
       if (!inv) return { error: 'Inventory record not found during fulfillment' }
@@ -207,6 +213,7 @@ export async function fulfillRequest(data: {
         cluster_id: request.cluster_id,
         storage_location_id: line.storage_location_id,
         ruhi_book_id: request.ruhi_book_id,
+        language: request.language,
         change_type: 'fulfilled' as const,
         quantity_change: -line.quantity,
         previous_quantity: inv.quantity,

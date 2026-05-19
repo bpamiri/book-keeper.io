@@ -71,6 +71,7 @@ export function ActivityClient({
       const searchable = [
         book?.title,
         book?.book_number ? `Book ${book.book_number}` : null,
+        log.language,
         location?.name,
         performer?.full_name,
         log.notes,
@@ -116,6 +117,7 @@ export function ActivityClient({
             <TableRow>
               <TableHead>Type</TableHead>
               <TableHead>Book</TableHead>
+              <TableHead>Language</TableHead>
               <TableHead>Location</TableHead>
               <TableHead className="text-right">Change</TableHead>
               <TableHead className="hidden sm:table-cell text-right">
@@ -129,7 +131,7 @@ export function ActivityClient({
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   No activity found.
                 </TableCell>
               </TableRow>
@@ -153,6 +155,11 @@ export function ActivityClient({
                       {book?.book_number
                         ? `Book ${book.book_number}`
                         : book?.title ?? "Unknown"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="font-normal">
+                        {log.language}
+                      </Badge>
                     </TableCell>
                     <TableCell>{location?.name ?? "Unknown"}</TableCell>
                     <TableCell className="text-right tabular-nums">
