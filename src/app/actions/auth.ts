@@ -4,28 +4,31 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppUrl } from '@/lib/utils'
 
-export async function loginWithMagicLink(email: string) {
+export async function loginWithPassword(email: string, password: string) {
   const supabase = await createClient()
 
-  const { error } = await supabase.auth.signInWithOtp({
+  const { error } = await supabase.auth.signInWithPassword({
     email,
-    options: {
-      emailRedirectTo: `${getAppUrl()}/auth/callback`,
-    },
+    password,
   })
 
   if (error) {
     return { error: error.message }
   }
 
-  return { success: true }
+  redirect('/dashboard')
 }
 
-export async function signup(email: string, fullName: string) {
+export async function signupWithPassword(
+  email: string,
+  password: string,
+  fullName: string,
+) {
   const supabase = await createClient()
 
-  const { error } = await supabase.auth.signInWithOtp({
+  const { data, error } = await supabase.auth.signUp({
     email,
+    password,
     options: {
       emailRedirectTo: `${getAppUrl()}/auth/callback`,
       data: {
@@ -38,7 +41,38 @@ export async function signup(email: string, fullName: string) {
     return { error: error.message }
   }
 
+  // If no session is returned, Supabase is requiring email confirmation
+  if (!data.session) {
+    return { needsConfirmation: true }
+  }
+
+  redirect('/dashboard')
+}
+
+export async function requestPasswordReset(email: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${getAppUrl()}/auth/callback?next=/reset-password`,
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
   return { success: true }
+}
+
+export async function updatePassword(password: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase.auth.updateUser({ password })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  redirect('/dashboard')
 }
 
 export async function logout() {
