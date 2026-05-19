@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash })
     authError = error
   } else if (code) {
-    // PKCE flow — used by magic link login, OAuth, sign up
+    // PKCE flow — used by sign-up email confirmation, password recovery, OAuth
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     authError = error
   }
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${baseUrl}/invite/accept`)
     }
 
-    // For non-invite flows (magic link, OAuth), activate pending members as before
+    // For non-invite flows (sign-up confirmation, recovery), activate pending members
     if (user?.email) {
       const admin = createAdminClient()
       await admin

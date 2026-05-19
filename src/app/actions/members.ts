@@ -81,7 +81,7 @@ export async function inviteMember(data: {
 
       if (inviteError) {
         // Don't fail the whole operation — the member record is created
-        // The user can still sign up via magic link later
+        // The user can still sign up later and the membership will activate by email match
         console.error('Failed to send invite email:', inviteError.message)
       }
     }
@@ -176,7 +176,7 @@ export async function removeMember(id: string) {
   }
 }
 
-export async function acceptInvite(fullName: string) {
+export async function acceptInvite(fullName: string, password?: string) {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -184,6 +184,13 @@ export async function acceptInvite(fullName: string) {
 
     const trimmedName = fullName.trim()
     if (!trimmedName) return { error: 'Name is required' }
+
+    // Set the user's password if provided (first-time invitees)
+    if (password) {
+      if (password.length < 6) return { error: 'Password must be at least 6 characters' }
+      const { error: pwdError } = await supabase.auth.updateUser({ password })
+      if (pwdError) return { error: pwdError.message }
+    }
 
     // Update the user's profile name
     const { error: profileError } = await supabase

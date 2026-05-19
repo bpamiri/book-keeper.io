@@ -24,6 +24,8 @@ interface InviteAcceptClientProps {
 export function InviteAcceptClient({ clusterNames, existingName }: InviteAcceptClientProps) {
   const router = useRouter()
   const [fullName, setFullName] = useState(existingName)
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const hasName = !!existingName
 
@@ -36,9 +38,20 @@ export function InviteAcceptClient({ clusterNames, existingName }: InviteAcceptC
     const trimmed = fullName.trim()
     if (!trimmed) return
 
+    if (!hasName) {
+      if (password.length < 6) {
+        toast.error('Password must be at least 6 characters')
+        return
+      }
+      if (password !== confirm) {
+        toast.error('Passwords do not match')
+        return
+      }
+    }
+
     setLoading(true)
     try {
-      const result = await acceptInvite(trimmed)
+      const result = await acceptInvite(trimmed, hasName ? undefined : password)
 
       if (result.error) {
         toast.error(result.error)
@@ -78,18 +91,47 @@ export function InviteAcceptClient({ clusterNames, existingName }: InviteAcceptC
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {!hasName && (
-                <div className="space-y-2">
-                  <Label htmlFor="full-name">Full Name</Label>
-                  <Input
-                    id="full-name"
-                    type="text"
-                    placeholder="Your full name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                    autoFocus
-                  />
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="full-name">Full Name</Label>
+                    <Input
+                      id="full-name"
+                      type="text"
+                      placeholder="Your full name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="invite-password">Password</Label>
+                    <Input
+                      id="invite-password"
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={6}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      At least 6 characters.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="invite-confirm">Confirm password</Label>
+                    <Input
+                      id="invite-confirm"
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={6}
+                      value={confirm}
+                      onChange={(e) => setConfirm(e.target.value)}
+                      required
+                    />
+                  </div>
+                </>
               )}
               <Button
                 type="submit"
