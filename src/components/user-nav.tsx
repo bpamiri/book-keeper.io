@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Settings, Shield } from "lucide-react";
+import { LogOut, Settings, Shield, UserCog } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -8,7 +8,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -43,18 +42,26 @@ export function UserNav({ profile }: { profile: Profile }) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">
-              {profile.full_name || "User"}
-            </p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {profile.email}
-            </p>
-          </div>
-        </DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <Link href="/account" className="font-normal">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">
+                {profile.full_name || "User"}
+              </p>
+              <p className="text-xs leading-none text-muted-foreground">
+                {profile.email}
+              </p>
+            </div>
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link href="/account">
+              <UserCog className="mr-2 size-4" />
+              Account Settings
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/dashboard">
               <Settings className="mr-2 size-4" />

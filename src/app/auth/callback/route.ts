@@ -39,7 +39,8 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${baseUrl}/invite/accept`)
     }
 
-    // For non-invite flows (sign-up confirmation, recovery), activate pending members
+    // For non-invite flows (sign-up confirmation, recovery, email change),
+    // activate pending members and keep profile email in sync with auth email.
     if (user?.email) {
       const admin = createAdminClient()
       await admin
@@ -51,6 +52,19 @@ export async function GET(request: Request) {
         })
         .eq('email', user.email)
         .eq('status', 'pending')
+
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('email')
+        .eq('id', user.id)
+        .single()
+
+      if (profile && profile.email !== user.email) {
+        await admin
+          .from('profiles')
+          .update({ email: user.email })
+          .eq('id', user.id)
+      }
     }
 
     const forwardedHost = request.headers.get('x-forwarded-host')
