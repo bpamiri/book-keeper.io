@@ -5,6 +5,39 @@ import { createClient } from '@/lib/supabase/server'
 import { DEFAULT_BOOK_LANGUAGE } from '@/lib/languages'
 import type { BookLanguage } from '@/types/database'
 
+async function verifyInventoryAdmin(clusterId: string) {
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) return { error: 'Not authenticated' as const }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role === 'platform_admin') {
+    return { user, supabase }
+  }
+
+  const { data: membership } = await supabase
+    .from('cluster_members')
+    .select('cluster_role')
+    .eq('cluster_id', clusterId)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
+  if (membership?.cluster_role === 'admin') {
+    return { user, supabase }
+  }
+
+  return {
+    error:
+      'Only cluster admins or platform admins can edit or delete inventory records' as const,
+  }
+}
+
 export async function addStock(data: {
   cluster_id: string
   storage_location_id: string
@@ -352,5 +385,136 @@ export async function bulkAddStock(data: {
     return { data: { success: true, processed } }
   } catch {
     return { error: 'Failed to bulk add stock' }
+  }
+}
+
+export async function updateInventory(
+  id: string,
+  data: {
+    storage_location_id: string
+    ruhi_book_id: string
+    language: BookLanguage
+    quantity: number
+    notes?: string | null
+  }
+) {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { error: 'Not authenticated' }
+
+    if (data.quantity < 0) return { error: 'Quantity cannot be negative' }
+
+    const { data: current, error: fetchError } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !current) return { error: 'Inventory record not found' }
+
+    const adminCheck = await verifyInventoryAdmin(current.cluster_id)
+    if ('error' in adminCheck) return { error: adminCheck.error }
+
+    // Prevent collision with another inventory row for the same
+    // (location, book, language) combination in this cluster.
+    const { data: duplicate } = await supabase
+      .from('inventory')
+      .select('id')
+      .eq('cluster_id', current.cluster_id)
+      .eq('storage_location_id', data.storage_location_id)
+      .eq('ruhi_book_id', data.ruhi_book_id)
+      .eq('language', data.language)
+      .neq('id', id)
+      .maybeSingle()
+
+    if (duplicate) {
+      return {
+        error:
+          'Another inventory record already exists for this book/language/location combination',
+      }
+    }
+
+    const previousQuantity = current.quantity
+    const quantityChange = data.quantity - previousQuantity
+
+    const { data: updated, error } = await supabase
+      .from('inventory')
+      .update({
+        storage_location_id: data.storage_location_id,
+        ruhi_book_id: data.ruhi_book_id,
+        language: data.language,
+        quantity: data.quantity,
+        notes: data.notes ?? null,
+        updated_by: user.id,
+      })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) return { error: error.message }
+
+    if (quantityChange !== 0) {
+      await supabase.from('inventory_log').insert({
+        cluster_id: current.cluster_id,
+        storage_location_id: data.storage_location_id,
+        ruhi_book_id: data.ruhi_book_id,
+        language: data.language,
+        change_type: 'adjustment' as const,
+        quantity_change: quantityChange,
+        previous_quantity: previousQuantity,
+        new_quantity: data.quantity,
+        notes: data.notes ?? 'Inventory record edited',
+        performed_by: user.id,
+      })
+    }
+
+    revalidatePath(`/clusters/${current.cluster_id}`)
+    return { data: updated }
+  } catch {
+    return { error: 'Failed to update inventory record' }
+  }
+}
+
+export async function deleteInventory(id: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { error: 'Not authenticated' }
+
+    const { data: current, error: fetchError } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !current) return { error: 'Inventory record not found' }
+
+    const adminCheck = await verifyInventoryAdmin(current.cluster_id)
+    if ('error' in adminCheck) return { error: adminCheck.error }
+
+    if (current.quantity > 0) {
+      await supabase.from('inventory_log').insert({
+        cluster_id: current.cluster_id,
+        storage_location_id: current.storage_location_id,
+        ruhi_book_id: current.ruhi_book_id,
+        language: current.language,
+        change_type: 'removed' as const,
+        quantity_change: -current.quantity,
+        previous_quantity: current.quantity,
+        new_quantity: 0,
+        notes: 'Inventory record deleted',
+        performed_by: user.id,
+      })
+    }
+
+    const { error } = await supabase.from('inventory').delete().eq('id', id)
+
+    if (error) return { error: error.message }
+
+    revalidatePath(`/clusters/${current.cluster_id}`)
+    return { data: { success: true } }
+  } catch {
+    return { error: 'Failed to delete inventory record' }
   }
 }

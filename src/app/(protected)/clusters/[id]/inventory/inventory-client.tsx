@@ -10,6 +10,8 @@ import {
   AlertTriangle,
   Layers,
   Trash2,
+  MoreHorizontal,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +33,22 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -38,7 +56,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { addStock, updateQuantity, transferStock, bulkAddStock } from "@/app/actions/inventory";
+import {
+  addStock,
+  updateQuantity,
+  transferStock,
+  bulkAddStock,
+  updateInventory,
+  deleteInventory,
+} from "@/app/actions/inventory";
 import { BOOK_LANGUAGES, DEFAULT_BOOK_LANGUAGE } from "@/lib/languages";
 import type { BookLanguage, Inventory, RuhiBook, StorageLocation } from "@/types/database";
 
@@ -56,6 +81,7 @@ interface InventoryClientProps {
   books: RuhiBook[];
   locations: StorageLocation[];
   isAdmin: boolean;
+  isPlatformAdmin: boolean;
 }
 
 export function InventoryClient({
@@ -64,7 +90,9 @@ export function InventoryClient({
   books,
   locations,
   isAdmin,
+  isPlatformAdmin,
 }: InventoryClientProps) {
+  const canManageRecords = isAdmin || isPlatformAdmin;
   const [filterBook, setFilterBook] = useState<string>("all");
   const [filterLocation, setFilterLocation] = useState<string>("all");
   const [filterLanguage, setFilterLanguage] = useState<string>("all");
@@ -74,6 +102,9 @@ export function InventoryClient({
   const [transferOpen, setTransferOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [editRecord, setEditRecord] = useState<Inventory | null>(null);
+  const [deleteRecord, setDeleteRecord] = useState<Inventory | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const bookMap = new Map(books.map((b) => [b.id, b]));
   const locationMap = new Map(locations.map((l) => [l.id, l]));
@@ -142,6 +173,19 @@ export function InventoryClient({
       toast.success("Quantity updated");
     }
     setEditingId(null);
+  }
+
+  async function handleDelete() {
+    if (!deleteRecord) return;
+    setDeleting(true);
+    const result = await deleteInventory(deleteRecord.id);
+    setDeleting(false);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Inventory record deleted");
+      setDeleteRecord(null);
+    }
   }
 
   return (
@@ -240,7 +284,7 @@ export function InventoryClient({
             open={addOpen}
             onOpenChange={setAddOpen}
           />
-          {isAdmin && (
+          {canManageRecords && (
             <>
               <BulkAddDialog
                 clusterId={clusterId}
@@ -273,12 +317,20 @@ export function InventoryClient({
               <TableHead className="hidden sm:table-cell">
                 Last Updated
               </TableHead>
+              {canManageRecords && (
+                <TableHead className="w-12 text-right">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell
+                  colSpan={canManageRecords ? 6 : 5}
+                  className="h-24 text-center"
+                >
                   No inventory records found.
                 </TableCell>
               </TableRow>
@@ -348,6 +400,33 @@ export function InventoryClient({
                     <TableCell className="hidden text-muted-foreground sm:table-cell">
                       {new Date(item.updated_at).toLocaleDateString()}
                     </TableCell>
+                    {canManageRecords && (
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="size-4" />
+                              <span className="sr-only">Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onSelect={() => setEditRecord(item)}
+                            >
+                              <Pencil className="mr-2 size-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onSelect={() => setDeleteRecord(item)}
+                            >
+                              <Trash2 className="mr-2 size-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })
@@ -355,6 +434,62 @@ export function InventoryClient({
           </TableBody>
         </Table>
       </div>
+
+      {editRecord && (
+        <EditInventoryDialog
+          record={editRecord}
+          books={books}
+          locations={locations}
+          inventory={inventory}
+          onDone={() => setEditRecord(null)}
+        />
+      )}
+
+      <AlertDialog
+        open={deleteRecord !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteRecord(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Inventory Record</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteRecord && (() => {
+                const book = bookMap.get(deleteRecord.ruhi_book_id);
+                const location = locationMap.get(
+                  deleteRecord.storage_location_id
+                );
+                const label = book
+                  ? bookLabel(book)
+                  : "this record";
+                return (
+                  <>
+                    Are you sure you want to delete the inventory record for{" "}
+                    <strong>{label}</strong> ({deleteRecord.language}) at{" "}
+                    <strong>{location?.name ?? "Unknown"}</strong>?{" "}
+                    {deleteRecord.quantity > 0 &&
+                      `This will remove ${deleteRecord.quantity} ${
+                        deleteRecord.quantity === 1 ? "copy" : "copies"
+                      } from inventory. `}
+                    This action cannot be undone.
+                  </>
+                );
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -893,6 +1028,160 @@ function TransferDialog({
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Transferring..." : "Transfer Stock"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditInventoryDialog({
+  record,
+  books,
+  locations,
+  inventory,
+  onDone,
+}: {
+  record: Inventory;
+  books: RuhiBook[];
+  locations: StorageLocation[];
+  inventory: Inventory[];
+  onDone: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [bookId, setBookId] = useState(record.ruhi_book_id);
+  const [language, setLanguage] = useState<BookLanguage>(record.language);
+  const [locationId, setLocationId] = useState(record.storage_location_id);
+  const [quantity, setQuantity] = useState(String(record.quantity));
+  const [notes, setNotes] = useState(record.notes ?? "");
+
+  const conflict = inventory.find(
+    (i) =>
+      i.id !== record.id &&
+      i.ruhi_book_id === bookId &&
+      i.storage_location_id === locationId &&
+      i.language === language
+  );
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const qty = parseInt(quantity, 10);
+    if (!bookId || !locationId || isNaN(qty) || qty < 0) {
+      toast.error("Please fill all required fields with valid values");
+      return;
+    }
+    if (conflict) {
+      toast.error(
+        "Another inventory record already exists for this book/language/location"
+      );
+      return;
+    }
+    setLoading(true);
+    const result = await updateInventory(record.id, {
+      storage_location_id: locationId,
+      ruhi_book_id: bookId,
+      language,
+      quantity: qty,
+      notes: notes || null,
+    });
+    setLoading(false);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Inventory record updated");
+      onDone();
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && !loading && onDone()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Inventory Record</DialogTitle>
+          <DialogDescription>
+            Update the book, language, location, quantity, or notes for this
+            inventory record.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Book</Label>
+            <Select value={bookId} onValueChange={setBookId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select book" />
+              </SelectTrigger>
+              <SelectContent>
+                {books.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {bookLabel(b)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Language</Label>
+            <Select
+              value={language}
+              onValueChange={(v) => setLanguage(v as BookLanguage)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BOOK_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang} value={lang}>
+                    {lang}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Location</Label>
+            <Select value={locationId} onValueChange={setLocationId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select location" />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.map((l) => (
+                  <SelectItem key={l.id} value={l.id}>
+                    {l.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Quantity</Label>
+            <Input
+              type="number"
+              min={0}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder="Number of copies"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Notes (optional)</Label>
+            <Input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g., Corrected after audit"
+            />
+          </div>
+          {conflict && (
+            <p className="text-sm text-destructive">
+              Another inventory record already exists for this
+              book/language/location combination.
+            </p>
+          )}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading || !!conflict}
+          >
+            {loading ? "Saving..." : "Save Changes"}
           </Button>
         </form>
       </DialogContent>
