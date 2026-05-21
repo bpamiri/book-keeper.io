@@ -53,8 +53,11 @@ export async function signupWithPassword(
 export async function requestPasswordReset(email: string) {
   const supabase = await createClient()
 
+  // Route via /auth/callback (already in the Supabase redirect allow-list
+  // for sign-up/invite/email-change). The next + type=recovery params make
+  // the callback land the user on /reset-password instead of /dashboard.
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${getAppUrl()}/auth/reset`,
+    redirectTo: `${getAppUrl()}/auth/callback?next=/reset-password&type=recovery`,
   })
 
   if (error) {
