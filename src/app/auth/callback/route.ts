@@ -30,16 +30,22 @@ export async function GET(request: Request) {
       data: { user },
     } = await supabase.auth.getUser()
 
+    const forwardedHost = request.headers.get('x-forwarded-host')
+    const isLocalEnv = process.env.NODE_ENV === 'development'
+    const baseUrl = isLocalEnv ? origin : forwardedHost ? `https://${forwardedHost}` : origin
+
     // For invite flows, redirect to the accept page (skip member activation)
     if (type === 'invite') {
-      const forwardedHost = request.headers.get('x-forwarded-host')
-      const isLocalEnv = process.env.NODE_ENV === 'development'
-      const baseUrl = isLocalEnv ? origin : forwardedHost ? `https://${forwardedHost}` : origin
-
       return NextResponse.redirect(`${baseUrl}/invite/accept`)
     }
 
-    // For non-invite flows (sign-up confirmation, recovery, email change),
+    // For password recovery, always land on /reset-password so the user
+    // gets to pick a new password — never bounce them into the app.
+    if (type === 'recovery') {
+      return NextResponse.redirect(`${baseUrl}/reset-password`)
+    }
+
+    // For non-invite flows (sign-up confirmation, email change),
     // activate pending members and keep profile email in sync with auth email.
     if (user?.email) {
       const admin = createAdminClient()
@@ -67,16 +73,16 @@ export async function GET(request: Request) {
       }
     }
 
+    return NextResponse.redirect(`${baseUrl}${next}`)
+  }
+
+  // Recovery link failed verification — send the user to /login with a
+  // recovery-specific error instead of the generic landing-page error.
+  if (type === 'recovery') {
     const forwardedHost = request.headers.get('x-forwarded-host')
     const isLocalEnv = process.env.NODE_ENV === 'development'
-
-    if (isLocalEnv) {
-      return NextResponse.redirect(`${origin}${next}`)
-    } else if (forwardedHost) {
-      return NextResponse.redirect(`https://${forwardedHost}${next}`)
-    } else {
-      return NextResponse.redirect(`${origin}${next}`)
-    }
+    const baseUrl = isLocalEnv ? origin : forwardedHost ? `https://${forwardedHost}` : origin
+    return NextResponse.redirect(`${baseUrl}/login?error=reset_link_invalid`)
   }
 
   // Auth code exchange failed — redirect to landing with error
