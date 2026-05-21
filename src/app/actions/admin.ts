@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getAppUrl } from '@/lib/utils'
 import type { BookCategory, PublicationStatus } from '@/types/database'
 
 async function verifyPlatformAdmin() {
@@ -69,6 +70,35 @@ export async function demoteFromAdmin(userId: string) {
     return { data: profile }
   } catch {
     return { error: 'Failed to demote user from admin' }
+  }
+}
+
+export async function sendPasswordResetForUser(userId: string) {
+  try {
+    const result = await verifyPlatformAdmin()
+    if ('error' in result) return { error: result.error }
+
+    const adminClient = createAdminClient()
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('email')
+      .eq('id', userId)
+      .single()
+
+    if (!profile?.email) {
+      return { error: 'User has no email on file' }
+    }
+
+    const { error } = await result.supabase.auth.resetPasswordForEmail(
+      profile.email,
+      { redirectTo: `${getAppUrl()}/auth/callback?next=/reset-password` },
+    )
+
+    if (error) return { error: error.message }
+
+    return { data: { email: profile.email } }
+  } catch {
+    return { error: 'Failed to send password reset email' }
   }
 }
 

@@ -1,16 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { MoreHorizontal, ShieldCheck, ShieldOff } from "lucide-react";
+import { KeyRound, MoreHorizontal, ShieldCheck, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { promoteToAdmin, demoteFromAdmin } from "@/app/actions/admin";
+import {
+  promoteToAdmin,
+  demoteFromAdmin,
+  sendPasswordResetForUser,
+} from "@/app/actions/admin";
 import type { UserRole } from "@/types/database";
 
 interface UserActionsProps {
@@ -44,6 +49,17 @@ export function UserActions({ userId, currentRole, isSelf }: UserActionsProps) {
     setLoading(false);
   }
 
+  async function handleSendReset() {
+    setLoading(true);
+    const result = await sendPasswordResetForUser(userId);
+    if (result.error) {
+      toast.error(result.error);
+    } else if (result.data) {
+      toast.success(`Password reset email sent to ${result.data.email}`);
+    }
+    setLoading(false);
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -53,6 +69,11 @@ export function UserActions({ userId, currentRole, isSelf }: UserActionsProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={handleSendReset}>
+          <KeyRound className="mr-2 size-4" />
+          Send password reset email
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         {currentRole === "user" ? (
           <DropdownMenuItem onClick={handlePromote}>
             <ShieldCheck className="mr-2 size-4" />
