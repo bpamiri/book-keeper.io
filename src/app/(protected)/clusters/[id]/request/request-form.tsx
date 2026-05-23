@@ -24,9 +24,19 @@ import {
 } from "@/components/ui/select";
 import { createRequest } from "@/app/actions/requests";
 import { BOOK_LANGUAGES, DEFAULT_BOOK_LANGUAGE } from "@/lib/languages";
-import type { BookLanguage, RuhiBook } from "@/types/database";
+import type {
+  BookLanguage,
+  PublicationStatus,
+  RuhiBook,
+} from "@/types/database";
 
 type BookWithAvailability = RuhiBook & { available: number };
+
+const STATUS_OPTIONS: { value: PublicationStatus; label: string }[] = [
+  { value: "published", label: "Published" },
+  { value: "pre_publication", label: "Pre-Publication" },
+  { value: "in_development", label: "In Development" },
+];
 
 export function RequestBookForm({
   clusterId,
@@ -39,10 +49,19 @@ export function RequestBookForm({
   const [loading, setLoading] = useState(false);
   const [bookId, setBookId] = useState("");
   const [language, setLanguage] = useState<BookLanguage>(DEFAULT_BOOK_LANGUAGE);
+  const [publicationStatus, setPublicationStatus] = useState<PublicationStatus>(
+    "published"
+  );
   const [quantity, setQuantity] = useState("");
   const [purpose, setPurpose] = useState("");
 
   const selectedBook = books.find((b) => b.id === bookId);
+
+  function handleBookChange(value: string) {
+    setBookId(value);
+    const next = books.find((b) => b.id === value);
+    if (next) setPublicationStatus(next.publication_status);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +75,7 @@ export function RequestBookForm({
       cluster_id: clusterId,
       ruhi_book_id: bookId,
       language,
+      publication_status: publicationStatus,
       quantity_requested: qty,
       purpose: purpose || null,
     });
@@ -86,7 +106,7 @@ export function RequestBookForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Book</Label>
-            <Select value={bookId} onValueChange={setBookId}>
+            <Select value={bookId} onValueChange={handleBookChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select book" />
               </SelectTrigger>
@@ -105,10 +125,19 @@ export function RequestBookForm({
               </SelectContent>
             </Select>
             {selectedBook && (
-              <p className="text-sm text-muted-foreground">
-                {selectedBook.available} copies currently available across all
-                languages in this cluster.
-              </p>
+              <div className="text-sm text-muted-foreground space-y-0.5">
+                {selectedBook.unit && <p>Unit: {selectedBook.unit}</p>}
+                <p>
+                  Current catalog status:{" "}
+                  {STATUS_OPTIONS.find(
+                    (s) => s.value === selectedBook.publication_status
+                  )?.label ?? selectedBook.publication_status}
+                </p>
+                <p>
+                  {selectedBook.available} copies currently available across
+                  all languages in this cluster.
+                </p>
+              </div>
             )}
           </div>
           <div className="space-y-2">
@@ -128,6 +157,30 @@ export function RequestBookForm({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Publication Status</Label>
+            <Select
+              value={publicationStatus}
+              onValueChange={(v) =>
+                setPublicationStatus(v as PublicationStatus)
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Defaults to the book&rsquo;s current catalog status. Change it to
+              request an older printing.
+            </p>
           </div>
           <div className="space-y-2">
             <Label>Quantity Needed</Label>
