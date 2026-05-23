@@ -79,6 +79,42 @@ function bookLabel(b: RuhiBook) {
   return b.title;
 }
 
+function bookDisplay(book: RuhiBook | undefined): {
+  primary: string;
+  secondary: string | null;
+} {
+  if (!book) return { primary: "Unknown", secondary: null };
+  if (book.category === "main_sequence") {
+    return {
+      primary: book.title,
+      secondary: book.book_number
+        ? book.unit
+          ? `Book ${book.book_number} - ${book.unit}`
+          : `Book ${book.book_number}`
+        : null,
+    };
+  }
+  if (isJysepBook(book)) {
+    return { primary: book.title, secondary: null };
+  }
+  return {
+    primary: book.book_number ? `Book ${book.book_number}` : book.title,
+    secondary: book.book_number ? book.title : null,
+  };
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  published: "Published",
+  pre_publication: "Pre-Publication",
+  in_development: "In Development",
+};
+
+const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
+  published: "default",
+  pre_publication: "secondary",
+  in_development: "outline",
+};
+
 type BookGroupKey = "main_sequence" | "jysep" | "childrens_classes";
 
 const BOOK_GROUP_ORDER: { key: BookGroupKey; label: string }[] = [
@@ -359,6 +395,7 @@ export function InventoryClient({
           <TableHeader>
             <TableRow>
               <TableHead>Book</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Language</TableHead>
               <TableHead>Location</TableHead>
               <TableHead className="text-right">Quantity</TableHead>
@@ -376,7 +413,7 @@ export function InventoryClient({
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={canManageRecords ? 6 : 5}
+                  colSpan={canManageRecords ? 7 : 6}
                   className="h-24 text-center"
                 >
                   No inventory records found.
@@ -387,7 +424,7 @@ export function InventoryClient({
                 <Fragment key={group.key}>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableCell
-                      colSpan={canManageRecords ? 6 : 5}
+                      colSpan={canManageRecords ? 7 : 6}
                       className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                     >
                       {group.label}
@@ -398,17 +435,12 @@ export function InventoryClient({
                     const location = locationMap.get(item.storage_location_id);
                     const isLow =
                       item.quantity > 0 && item.quantity <= LOW_STOCK_THRESHOLD;
+                    const display = bookDisplay(book);
                     return (
                       <TableRow key={item.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <div className="font-medium">
-                          {book && isJysepBook(book)
-                            ? book.title
-                            : book?.book_number
-                              ? `Book ${book.book_number}`
-                              : book?.title ?? "Unknown"}
-                        </div>
+                        <div className="font-medium">{display.primary}</div>
                         {isLow && (
                           <Badge
                             variant="outline"
@@ -418,10 +450,20 @@ export function InventoryClient({
                           </Badge>
                         )}
                       </div>
-                      {book?.book_number && !isJysepBook(book) && (
+                      {display.secondary && (
                         <div className="text-xs text-muted-foreground">
-                          {book.title}
+                          {display.secondary}
                         </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {book && (
+                        <Badge
+                          variant={STATUS_VARIANTS[book.publication_status] ?? "outline"}
+                          className="font-normal"
+                        >
+                          {STATUS_LABELS[book.publication_status] ?? book.publication_status}
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell>
