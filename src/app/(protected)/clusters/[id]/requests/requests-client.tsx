@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+
+const STATUS_LABELS: Record<string, string> = {
+  published: "Published",
+  pre_publication: "Pre-Publication",
+  in_development: "In Development",
+};
+
+
 import { Search, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -322,11 +330,12 @@ function FulfillDialog({
   const [loading, setLoading] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, string>>({});
 
-  // Filter inventory to only this book + the requested language
+  // Filter inventory to only this book + the requested language + status
   const bookInventory = inventory.filter(
     (inv) =>
       inv.ruhi_book_id === request.ruhi_book_id &&
-      inv.language === request.language
+      inv.language === request.language &&
+      inv.publication_status === request.publication_status
   );
   const locationInventoryMap = new Map(
     bookInventory.map((inv) => [inv.storage_location_id, inv.quantity])
@@ -380,8 +389,10 @@ function FulfillDialog({
           <DialogTitle>Fulfill Request</DialogTitle>
           <DialogDescription>
             {book?.book_number ? `Book ${book.book_number}: ` : ""}
-            {book?.title ?? "Unknown"} ({request.language}) &mdash;{" "}
-            {request.quantity_requested} copies needed
+            {book?.title ?? "Unknown"} ({request.language},{" "}
+            {STATUS_LABELS[request.publication_status] ??
+              request.publication_status}
+            ) &mdash; {request.quantity_requested} copies needed
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

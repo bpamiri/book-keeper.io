@@ -3,12 +3,13 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { DEFAULT_BOOK_LANGUAGE } from '@/lib/languages'
-import type { BookLanguage } from '@/types/database'
+import type { BookLanguage, PublicationStatus } from '@/types/database'
 
 export async function createRequest(data: {
   cluster_id: string
   ruhi_book_id: string
   language: BookLanguage
+  publication_status?: PublicationStatus
   quantity_requested: number
   purpose?: string | null
 }) {
@@ -46,13 +47,16 @@ export async function createRequest(data: {
       .single()
     if (!book) return { error: 'Book not found in catalog' }
 
+    const publication_status =
+      data.publication_status ?? book.publication_status
+
     const { data: request, error } = await supabase
       .from('book_requests')
       .insert({
         cluster_id: data.cluster_id,
         ruhi_book_id: data.ruhi_book_id,
         language: data.language ?? DEFAULT_BOOK_LANGUAGE,
-        publication_status: book.publication_status,
+        publication_status,
         quantity_requested: data.quantity_requested,
         requested_by: user.id,
         purpose: data.purpose ?? null,
