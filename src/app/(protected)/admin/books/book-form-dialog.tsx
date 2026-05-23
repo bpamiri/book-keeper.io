@@ -54,7 +54,6 @@ export function BookFormDialog({ mode, book, trigger }: BookFormDialogProps) {
     const title = formData.get("title") as string;
     const bookNumber = formData.get("book_number") as string;
     const unit = (formData.get("unit") as string) || undefined;
-    const language = (formData.get("language") as string) || "English";
     const description = (formData.get("description") as string) || undefined;
     const sortOrder = parseInt(formData.get("sort_order") as string, 10);
     const isActive = formData.get("is_active") === "on";
@@ -65,7 +64,6 @@ export function BookFormDialog({ mode, book, trigger }: BookFormDialogProps) {
       category,
       publication_status: pubStatus,
       unit: unit || null,
-      language,
       description: description || null,
       is_active: isActive,
       sort_order: isNaN(sortOrder) ? 0 : sortOrder,
@@ -198,24 +196,14 @@ export function BookFormDialog({ mode, book, trigger }: BookFormDialogProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="unit">Unit</Label>
-                <Input
-                  id="unit"
-                  name="unit"
-                  defaultValue={book?.unit ?? ""}
-                  placeholder="e.g. Unit 1"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="language">Language</Label>
-                <Input
-                  id="language"
-                  name="language"
-                  defaultValue={book?.language ?? "English"}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="unit">Unit</Label>
+              <Input
+                id="unit"
+                name="unit"
+                defaultValue={book?.unit ?? ""}
+                placeholder="e.g. Unit 1"
+              />
             </div>
 
             <div className="space-y-2">

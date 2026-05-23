@@ -219,7 +219,6 @@ export type Database = {
           category: BookCategory;
           publication_status: PublicationStatus;
           unit: string | null;
-          language: string;
           description: string | null;
           is_active: boolean;
           sort_order: number;
@@ -233,7 +232,6 @@ export type Database = {
           category: BookCategory;
           publication_status: PublicationStatus;
           unit?: string | null;
-          language?: string;
           description?: string | null;
           is_active?: boolean;
           sort_order: number;
@@ -247,7 +245,6 @@ export type Database = {
           category?: BookCategory;
           publication_status?: PublicationStatus;
           unit?: string | null;
-          language?: string;
           description?: string | null;
           is_active?: boolean;
           sort_order?: number;

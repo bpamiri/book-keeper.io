@@ -110,7 +110,6 @@ export async function createRuhiBook(data: {
   category: BookCategory
   publication_status: PublicationStatus
   unit?: string | null
-  language?: string
   description?: string | null
   is_active?: boolean
   sort_order: number
@@ -127,7 +126,6 @@ export async function createRuhiBook(data: {
         category: data.category,
         publication_status: data.publication_status,
         unit: data.unit ?? null,
-        language: data.language ?? 'English',
         description: data.description ?? null,
         is_active: data.is_active ?? true,
         sort_order: data.sort_order,
@@ -152,7 +150,6 @@ export async function updateRuhiBook(
     category?: BookCategory
     publication_status?: PublicationStatus
     unit?: string | null
-    language?: string
     description?: string | null
     is_active?: boolean
     sort_order?: number
