@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { toast } from "sonner";
 import {
   Plus,
@@ -65,7 +65,7 @@ import {
   deleteInventory,
 } from "@/app/actions/inventory";
 import { BOOK_LANGUAGES, DEFAULT_BOOK_LANGUAGE } from "@/lib/languages";
-import type { BookLanguage, Inventory, RuhiBook, StorageLocation } from "@/types/database";
+import type { BookCategory, BookLanguage, Inventory, RuhiBook, StorageLocation } from "@/types/database";
 
 const LOW_STOCK_THRESHOLD = 5;
 
@@ -73,6 +73,28 @@ function bookLabel(b: RuhiBook) {
   if (b.category === "junior_youth_text") return `JYSEP: ${b.title}`;
   if (b.book_number) return `Book ${b.book_number}: ${b.title}`;
   return b.title;
+}
+
+type BookGroupKey = "main_sequence" | "jysep" | "childrens_classes";
+
+const BOOK_GROUP_ORDER: { key: BookGroupKey; label: string }[] = [
+  { key: "main_sequence", label: "Main Sequence" },
+  { key: "jysep", label: "Junior Youth Spiritual Empowerment Program" },
+  { key: "childrens_classes", label: "Children's Classes" },
+];
+
+const CATEGORY_TO_GROUP: Record<BookCategory, BookGroupKey> = {
+  main_sequence: "main_sequence",
+  junior_youth_text: "jysep",
+  branch_book5: "jysep",
+  branch_book3: "childrens_classes",
+};
+
+function compareBooks(a: RuhiBook, b: RuhiBook) {
+  const aNum = a.book_number ?? Number.POSITIVE_INFINITY;
+  const bNum = b.book_number ?? Number.POSITIVE_INFINITY;
+  if (aNum !== bNum) return aNum - bNum;
+  return a.title.localeCompare(b.title);
 }
 
 interface InventoryClientProps {
@@ -131,6 +153,24 @@ export function InventoryClient({
     }
     return true;
   });
+
+  const groupedFiltered = BOOK_GROUP_ORDER.map((group) => {
+    const items = filtered
+      .filter((item) => {
+        const book = bookMap.get(item.ruhi_book_id);
+        return book && CATEGORY_TO_GROUP[book.category] === group.key;
+      })
+      .sort((a, b) => {
+        const ba = bookMap.get(a.ruhi_book_id);
+        const bb = bookMap.get(b.ruhi_book_id);
+        if (ba && bb) {
+          const cmp = compareBooks(ba, bb);
+          if (cmp !== 0) return cmp;
+        }
+        return a.language.localeCompare(b.language);
+      });
+    return { ...group, items };
+  }).filter((group) => group.items.length > 0);
 
   const lowStockItems = inventory.filter(
     (item) => item.quantity > 0 && item.quantity <= LOW_STOCK_THRESHOLD
@@ -335,13 +375,23 @@ export function InventoryClient({
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((item) => {
-                const book = bookMap.get(item.ruhi_book_id);
-                const location = locationMap.get(item.storage_location_id);
-                const isLow =
-                  item.quantity > 0 && item.quantity <= LOW_STOCK_THRESHOLD;
-                return (
-                  <TableRow key={item.id}>
+              groupedFiltered.map((group) => (
+                <Fragment key={group.key}>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableCell
+                      colSpan={canManageRecords ? 6 : 5}
+                      className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      {group.label}
+                    </TableCell>
+                  </TableRow>
+                  {group.items.map((item) => {
+                    const book = bookMap.get(item.ruhi_book_id);
+                    const location = locationMap.get(item.storage_location_id);
+                    const isLow =
+                      item.quantity > 0 && item.quantity <= LOW_STOCK_THRESHOLD;
+                    return (
+                      <TableRow key={item.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="font-medium">
@@ -429,7 +479,9 @@ export function InventoryClient({
                     )}
                   </TableRow>
                 );
-              })
+                  })}
+                </Fragment>
+              ))
             )}
           </TableBody>
         </Table>
