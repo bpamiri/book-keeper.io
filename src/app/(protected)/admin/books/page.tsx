@@ -109,15 +109,9 @@ export default async function AdminBooksPage() {
                   </TableCell>
                   <TableCell className="font-medium whitespace-normal">
                     {book.title}
-                    {(book.unit ||
-                      book.language !== "English") && (
+                    {book.unit && (
                       <p className="text-xs text-muted-foreground font-normal">
-                        {[
-                          book.unit,
-                          book.language !== "English" ? book.language : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
+                        {book.unit}
                       </p>
                     )}
                     <div className="flex gap-1 mt-1 md:hidden">
