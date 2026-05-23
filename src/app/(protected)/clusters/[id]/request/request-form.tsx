@@ -60,6 +60,16 @@ function sortBooks<T extends RuhiBook>(books: T[]): T[] {
   });
 }
 
+function isJysepBook(b: RuhiBook) {
+  return b.category === "junior_youth_text" || b.category === "branch_book5";
+}
+
+function dropdownLabel(b: RuhiBook) {
+  if (isJysepBook(b)) return `JYSEP: ${b.title}`;
+  if (b.book_number) return `Book ${b.book_number}: ${b.title}`;
+  return b.title;
+}
+
 export function RequestBookForm({
   clusterId,
   books,
@@ -137,8 +147,7 @@ export function RequestBookForm({
                 {sortedBooks.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     <span className="flex items-center gap-2">
-                      {b.book_number ? `Book ${b.book_number}: ` : ""}
-                      {b.title}
+                      {dropdownLabel(b)}
                       <Badge variant="outline" className="ml-1 text-xs">
                         {b.available} avail.
                       </Badge>
