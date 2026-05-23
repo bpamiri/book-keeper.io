@@ -63,7 +63,12 @@ export function RequestBookForm({
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success("Request submitted successfully");
+      const autoApproved = result.data?.status === "approved";
+      toast.success(
+        autoApproved
+          ? "Request auto-approved"
+          : "Request submitted successfully"
+      );
       router.push(`/clusters/${clusterId}/requests`);
     }
   }
