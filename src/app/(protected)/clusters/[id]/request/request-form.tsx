@@ -25,6 +25,7 @@ import {
 import { createRequest } from "@/app/actions/requests";
 import { BOOK_LANGUAGES, DEFAULT_BOOK_LANGUAGE } from "@/lib/languages";
 import type {
+  BookCategory,
   BookLanguage,
   PublicationStatus,
   RuhiBook,
@@ -37,6 +38,27 @@ const STATUS_OPTIONS: { value: PublicationStatus; label: string }[] = [
   { value: "pre_publication", label: "Pre-Publication" },
   { value: "in_development", label: "In Development" },
 ];
+
+// Same grouping the inventory list uses (Main Sequence first, then JYSEP,
+// then Children's Classes), so Book 8 and Book 8 Unit 2 cluster together.
+const CATEGORY_RANK: Record<BookCategory, number> = {
+  main_sequence: 0,
+  junior_youth_text: 1,
+  branch_book5: 1,
+  branch_book3: 2,
+};
+
+function sortBooks<T extends RuhiBook>(books: T[]): T[] {
+  return [...books].sort((a, b) => {
+    const aRank = CATEGORY_RANK[a.category] ?? 99;
+    const bRank = CATEGORY_RANK[b.category] ?? 99;
+    if (aRank !== bRank) return aRank - bRank;
+    const aNum = a.book_number ?? Number.POSITIVE_INFINITY;
+    const bNum = b.book_number ?? Number.POSITIVE_INFINITY;
+    if (aNum !== bNum) return aNum - bNum;
+    return a.title.localeCompare(b.title);
+  });
+}
 
 export function RequestBookForm({
   clusterId,
@@ -55,6 +77,7 @@ export function RequestBookForm({
   const [quantity, setQuantity] = useState("");
   const [purpose, setPurpose] = useState("");
 
+  const sortedBooks = sortBooks(books);
   const selectedBook = books.find((b) => b.id === bookId);
 
   function handleBookChange(value: string) {
@@ -111,7 +134,7 @@ export function RequestBookForm({
                 <SelectValue placeholder="Select book" />
               </SelectTrigger>
               <SelectContent>
-                {books.map((b) => (
+                {sortedBooks.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     <span className="flex items-center gap-2">
                       {b.book_number ? `Book ${b.book_number}: ` : ""}
