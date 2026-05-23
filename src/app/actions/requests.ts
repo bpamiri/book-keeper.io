@@ -21,6 +21,24 @@ export async function createRequest(data: {
       return { error: 'Quantity must be positive' }
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    let isAdmin = profile?.role === 'platform_admin'
+    if (!isAdmin) {
+      const { data: membership } = await supabase
+        .from('cluster_members')
+        .select('cluster_role')
+        .eq('cluster_id', data.cluster_id)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single()
+      isAdmin = membership?.cluster_role === 'admin'
+    }
+
     const { data: request, error } = await supabase
       .from('book_requests')
       .insert({
@@ -30,7 +48,7 @@ export async function createRequest(data: {
         quantity_requested: data.quantity_requested,
         requested_by: user.id,
         purpose: data.purpose ?? null,
-        status: 'pending',
+        status: isAdmin ? 'approved' : 'pending',
       })
       .select()
       .single()
