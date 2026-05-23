@@ -158,6 +158,7 @@ export function InventoryClient({
   const [filterBook, setFilterBook] = useState<string>("all");
   const [filterLocation, setFilterLocation] = useState<string>("all");
   const [filterLanguage, setFilterLanguage] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -176,6 +177,7 @@ export function InventoryClient({
     if (filterLocation !== "all" && item.storage_location_id !== filterLocation)
       return false;
     if (filterLanguage !== "all" && item.language !== filterLanguage) return false;
+    if (filterStatus !== "all" && item.publication_status !== filterStatus) return false;
     if (search) {
       const q = search.toLowerCase();
       const book = bookMap.get(item.ruhi_book_id);
@@ -341,6 +343,22 @@ export function InventoryClient({
           </Select>
         </div>
         <div className="flex items-center gap-2">
+          <Label className="text-sm whitespace-nowrap">Status:</Label>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
           <Label className="text-sm whitespace-nowrap">Location:</Label>
           <Select value={filterLocation} onValueChange={setFilterLocation}>
             <SelectTrigger className="w-[200px]">
@@ -457,14 +475,12 @@ export function InventoryClient({
                       )}
                     </TableCell>
                     <TableCell>
-                      {book && (
-                        <Badge
-                          variant={STATUS_VARIANTS[book.publication_status] ?? "outline"}
-                          className="font-normal"
-                        >
-                          {STATUS_LABELS[book.publication_status] ?? book.publication_status}
-                        </Badge>
-                      )}
+                      <Badge
+                        variant={STATUS_VARIANTS[item.publication_status] ?? "outline"}
+                        className="font-normal"
+                      >
+                        {STATUS_LABELS[item.publication_status] ?? item.publication_status}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="font-normal">
@@ -979,11 +995,13 @@ function TransferDialog({
   const [quantity, setQuantity] = useState("");
   const [notes, setNotes] = useState("");
 
+  const selectedBook = books.find((b) => b.id === bookId);
   const sourceItem = inventory.find(
     (i) =>
       i.ruhi_book_id === bookId &&
       i.storage_location_id === fromId &&
-      i.language === language
+      i.language === language &&
+      i.publication_status === selectedBook?.publication_status
   );
   const maxQty = sourceItem?.quantity ?? 0;
 
@@ -1164,7 +1182,8 @@ function EditInventoryDialog({
       i.id !== record.id &&
       i.ruhi_book_id === bookId &&
       i.storage_location_id === locationId &&
-      i.language === language
+      i.language === language &&
+      i.publication_status === record.publication_status
   );
 
   async function handleSubmit(e: React.FormEvent) {

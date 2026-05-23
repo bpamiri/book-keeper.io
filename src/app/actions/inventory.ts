@@ -3,7 +3,21 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { DEFAULT_BOOK_LANGUAGE } from '@/lib/languages'
-import type { BookLanguage } from '@/types/database'
+import type { BookLanguage, PublicationStatus } from '@/types/database'
+
+type SupabaseClient = Awaited<ReturnType<typeof createClient>>
+
+async function getBookPublicationStatus(
+  supabase: SupabaseClient,
+  bookId: string
+): Promise<PublicationStatus | null> {
+  const { data } = await supabase
+    .from('ruhi_books')
+    .select('publication_status')
+    .eq('id', bookId)
+    .single()
+  return (data?.publication_status as PublicationStatus | undefined) ?? null
+}
 
 async function verifyInventoryAdmin(clusterId: string) {
   const supabase = await createClient()
@@ -55,7 +69,13 @@ export async function addStock(data: {
 
     const language = data.language ?? DEFAULT_BOOK_LANGUAGE
 
-    // Check if inventory record already exists for this book+language at this location
+    const publication_status = await getBookPublicationStatus(
+      supabase,
+      data.ruhi_book_id
+    )
+    if (!publication_status) return { error: 'Book not found in catalog' }
+
+    // Check if inventory record already exists for this book+language+status at this location
     const { data: existing } = await supabase
       .from('inventory')
       .select('id, quantity')
@@ -63,6 +83,7 @@ export async function addStock(data: {
       .eq('storage_location_id', data.storage_location_id)
       .eq('ruhi_book_id', data.ruhi_book_id)
       .eq('language', language)
+      .eq('publication_status', publication_status)
       .single()
 
     let inventoryRecord
@@ -93,6 +114,7 @@ export async function addStock(data: {
           storage_location_id: data.storage_location_id,
           ruhi_book_id: data.ruhi_book_id,
           language,
+          publication_status,
           quantity: data.quantity,
           notes: data.notes ?? null,
           updated_by: user.id,
@@ -110,6 +132,7 @@ export async function addStock(data: {
       storage_location_id: data.storage_location_id,
       ruhi_book_id: data.ruhi_book_id,
       language,
+      publication_status,
       change_type: 'added' as const,
       quantity_change: data.quantity,
       previous_quantity: previousQuantity,
@@ -168,6 +191,7 @@ export async function updateQuantity(
       storage_location_id: current.storage_location_id,
       ruhi_book_id: current.ruhi_book_id,
       language: current.language,
+      publication_status: current.publication_status,
       change_type: 'adjustment' as const,
       quantity_change: quantityChange,
       previous_quantity: previousQuantity,
@@ -204,7 +228,14 @@ export async function transferStock(data: {
 
     const language = data.language ?? DEFAULT_BOOK_LANGUAGE
 
-    // Get source inventory
+    const publication_status = await getBookPublicationStatus(
+      supabase,
+      data.ruhi_book_id
+    )
+    if (!publication_status) return { error: 'Book not found in catalog' }
+
+    // Get source inventory (current catalog status only — pre-pub stock
+    // can be moved via the edit dialog)
     const { data: source, error: sourceError } = await supabase
       .from('inventory')
       .select('id, quantity')
@@ -212,6 +243,7 @@ export async function transferStock(data: {
       .eq('storage_location_id', data.from_location_id)
       .eq('ruhi_book_id', data.ruhi_book_id)
       .eq('language', language)
+      .eq('publication_status', publication_status)
       .single()
 
     if (sourceError || !source) return { error: 'Source inventory not found' }
@@ -237,6 +269,7 @@ export async function transferStock(data: {
       .eq('storage_location_id', data.to_location_id)
       .eq('ruhi_book_id', data.ruhi_book_id)
       .eq('language', language)
+      .eq('publication_status', publication_status)
       .single()
 
     const destPrevQuantity = dest?.quantity ?? 0
@@ -257,6 +290,7 @@ export async function transferStock(data: {
           storage_location_id: data.to_location_id,
           ruhi_book_id: data.ruhi_book_id,
           language,
+          publication_status,
           quantity: data.quantity,
           updated_by: user.id,
         })
@@ -273,6 +307,7 @@ export async function transferStock(data: {
         storage_location_id: data.from_location_id,
         ruhi_book_id: data.ruhi_book_id,
         language,
+        publication_status,
         change_type: 'transferred' as const,
         quantity_change: -data.quantity,
         previous_quantity: source.quantity,
@@ -285,6 +320,7 @@ export async function transferStock(data: {
         storage_location_id: data.to_location_id,
         ruhi_book_id: data.ruhi_book_id,
         language,
+        publication_status,
         change_type: 'transferred' as const,
         quantity_change: data.quantity,
         previous_quantity: destPrevQuantity,
@@ -326,6 +362,15 @@ export async function bulkAddStock(data: {
 
     for (const item of data.items) {
       const language = item.language ?? DEFAULT_BOOK_LANGUAGE
+
+      const publication_status = await getBookPublicationStatus(
+        supabase,
+        item.ruhi_book_id
+      )
+      if (!publication_status) {
+        return { error: `Item ${processed + 1}: book not found in catalog` }
+      }
+
       const { data: existing } = await supabase
         .from('inventory')
         .select('id, quantity')
@@ -333,6 +378,7 @@ export async function bulkAddStock(data: {
         .eq('storage_location_id', item.storage_location_id)
         .eq('ruhi_book_id', item.ruhi_book_id)
         .eq('language', language)
+        .eq('publication_status', publication_status)
         .single()
 
       const previousQuantity = existing?.quantity ?? 0
@@ -357,6 +403,7 @@ export async function bulkAddStock(data: {
             storage_location_id: item.storage_location_id,
             ruhi_book_id: item.ruhi_book_id,
             language,
+            publication_status,
             quantity: item.quantity,
             notes: data.notes ?? null,
             updated_by: user.id,
@@ -370,6 +417,7 @@ export async function bulkAddStock(data: {
         storage_location_id: item.storage_location_id,
         ruhi_book_id: item.ruhi_book_id,
         language,
+        publication_status,
         change_type: 'added' as const,
         quantity_change: item.quantity,
         previous_quantity: previousQuantity,
@@ -416,8 +464,17 @@ export async function updateInventory(
     const adminCheck = await verifyInventoryAdmin(current.cluster_id)
     if ('error' in adminCheck) return { error: adminCheck.error }
 
+    // If the book changed, snapshot the new book's catalog status.
+    // Otherwise the row's existing status is preserved (the form
+    // doesn't let admins change status directly — that's deliberate).
+    const publication_status =
+      data.ruhi_book_id !== current.ruhi_book_id
+        ? await getBookPublicationStatus(supabase, data.ruhi_book_id)
+        : current.publication_status
+    if (!publication_status) return { error: 'Book not found in catalog' }
+
     // Prevent collision with another inventory row for the same
-    // (location, book, language) combination in this cluster.
+    // (location, book, language, publication_status) combination.
     const { data: duplicate } = await supabase
       .from('inventory')
       .select('id')
@@ -425,6 +482,7 @@ export async function updateInventory(
       .eq('storage_location_id', data.storage_location_id)
       .eq('ruhi_book_id', data.ruhi_book_id)
       .eq('language', data.language)
+      .eq('publication_status', publication_status)
       .neq('id', id)
       .maybeSingle()
 
@@ -444,6 +502,7 @@ export async function updateInventory(
         storage_location_id: data.storage_location_id,
         ruhi_book_id: data.ruhi_book_id,
         language: data.language,
+        publication_status,
         quantity: data.quantity,
         notes: data.notes ?? null,
         updated_by: user.id,
@@ -460,6 +519,7 @@ export async function updateInventory(
         storage_location_id: data.storage_location_id,
         ruhi_book_id: data.ruhi_book_id,
         language: data.language,
+        publication_status,
         change_type: 'adjustment' as const,
         quantity_change: quantityChange,
         previous_quantity: previousQuantity,
@@ -499,6 +559,7 @@ export async function deleteInventory(id: string) {
         storage_location_id: current.storage_location_id,
         ruhi_book_id: current.ruhi_book_id,
         language: current.language,
+        publication_status: current.publication_status,
         change_type: 'removed' as const,
         quantity_change: -current.quantity,
         previous_quantity: current.quantity,

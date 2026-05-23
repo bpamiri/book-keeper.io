@@ -39,12 +39,20 @@ export async function createRequest(data: {
       isAdmin = membership?.cluster_role === 'admin'
     }
 
+    const { data: book } = await supabase
+      .from('ruhi_books')
+      .select('publication_status')
+      .eq('id', data.ruhi_book_id)
+      .single()
+    if (!book) return { error: 'Book not found in catalog' }
+
     const { data: request, error } = await supabase
       .from('book_requests')
       .insert({
         cluster_id: data.cluster_id,
         ruhi_book_id: data.ruhi_book_id,
         language: data.language ?? DEFAULT_BOOK_LANGUAGE,
+        publication_status: book.publication_status,
         quantity_requested: data.quantity_requested,
         requested_by: user.id,
         purpose: data.purpose ?? null,
@@ -177,6 +185,7 @@ export async function fulfillRequest(data: {
         .eq('storage_location_id', line.storage_location_id)
         .eq('ruhi_book_id', request.ruhi_book_id)
         .eq('language', request.language)
+        .eq('publication_status', request.publication_status)
         .single()
 
       if (invError || !inv) {
@@ -197,6 +206,7 @@ export async function fulfillRequest(data: {
         .eq('storage_location_id', line.storage_location_id)
         .eq('ruhi_book_id', request.ruhi_book_id)
         .eq('language', request.language)
+        .eq('publication_status', request.publication_status)
         .single()
 
       if (!inv) return { error: 'Inventory record not found during fulfillment' }
@@ -232,6 +242,7 @@ export async function fulfillRequest(data: {
         storage_location_id: line.storage_location_id,
         ruhi_book_id: request.ruhi_book_id,
         language: request.language,
+        publication_status: request.publication_status,
         change_type: 'fulfilled' as const,
         quantity_change: -line.quantity,
         previous_quantity: inv.quantity,

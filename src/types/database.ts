@@ -260,6 +260,7 @@ export type Database = {
           storage_location_id: string;
           ruhi_book_id: string;
           language: BookLanguage;
+          publication_status: PublicationStatus;
           quantity: number;
           notes: string | null;
           updated_by: string;
@@ -272,6 +273,7 @@ export type Database = {
           storage_location_id: string;
           ruhi_book_id: string;
           language?: BookLanguage;
+          publication_status?: PublicationStatus;
           quantity?: number;
           notes?: string | null;
           updated_by: string;
@@ -284,6 +286,7 @@ export type Database = {
           storage_location_id?: string;
           ruhi_book_id?: string;
           language?: BookLanguage;
+          publication_status?: PublicationStatus;
           quantity?: number;
           notes?: string | null;
           updated_by?: string;
@@ -327,6 +330,7 @@ export type Database = {
           cluster_id: string;
           ruhi_book_id: string;
           language: BookLanguage;
+          publication_status: PublicationStatus;
           quantity_requested: number;
           requested_by: string;
           purpose: string | null;
@@ -342,6 +346,7 @@ export type Database = {
           cluster_id: string;
           ruhi_book_id: string;
           language?: BookLanguage;
+          publication_status?: PublicationStatus;
           quantity_requested: number;
           requested_by: string;
           purpose?: string | null;
@@ -357,6 +362,7 @@ export type Database = {
           cluster_id?: string;
           ruhi_book_id?: string;
           language?: BookLanguage;
+          publication_status?: PublicationStatus;
           quantity_requested?: number;
           requested_by?: string;
           purpose?: string | null;
@@ -457,6 +463,7 @@ export type Database = {
           storage_location_id: string;
           ruhi_book_id: string;
           language: BookLanguage;
+          publication_status: PublicationStatus;
           change_type: ChangeType;
           quantity_change: number;
           previous_quantity: number;
@@ -473,6 +480,7 @@ export type Database = {
           storage_location_id: string;
           ruhi_book_id: string;
           language?: BookLanguage;
+          publication_status?: PublicationStatus;
           change_type: ChangeType;
           quantity_change: number;
           previous_quantity: number;
@@ -489,6 +497,7 @@ export type Database = {
           storage_location_id?: string;
           ruhi_book_id?: string;
           language?: BookLanguage;
+          publication_status?: PublicationStatus;
           change_type?: ChangeType;
           quantity_change?: number;
           previous_quantity?: number;
