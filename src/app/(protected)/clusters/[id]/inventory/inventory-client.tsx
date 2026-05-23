@@ -69,8 +69,12 @@ import type { BookCategory, BookLanguage, Inventory, RuhiBook, StorageLocation }
 
 const LOW_STOCK_THRESHOLD = 5;
 
+function isJysepBook(b: RuhiBook) {
+  return b.category === "junior_youth_text" || b.category === "branch_book5";
+}
+
 function bookLabel(b: RuhiBook) {
-  if (b.category === "junior_youth_text") return `JYSEP: ${b.title}`;
+  if (isJysepBook(b)) return b.title;
   if (b.book_number) return `Book ${b.book_number}: ${b.title}`;
   return b.title;
 }
@@ -243,9 +247,13 @@ export function InventoryClient({
               {lowStockItems
                 .map((item) => {
                   const book = bookMap.get(item.ruhi_book_id);
-                  const base = book?.book_number
-                    ? `Book ${book.book_number}`
-                    : book?.title ?? "Unknown";
+                  const base = book
+                    ? isJysepBook(book)
+                      ? book.title
+                      : book.book_number
+                        ? `Book ${book.book_number}`
+                        : book.title
+                    : "Unknown";
                   return `${base} (${item.language}, ${item.quantity})`;
                 })
                 .join(", ")}
@@ -395,9 +403,11 @@ export function InventoryClient({
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="font-medium">
-                          {book?.book_number
-                            ? `Book ${book.book_number}`
-                            : book?.title ?? "Unknown"}
+                          {book && isJysepBook(book)
+                            ? book.title
+                            : book?.book_number
+                              ? `Book ${book.book_number}`
+                              : book?.title ?? "Unknown"}
                         </div>
                         {isLow && (
                           <Badge
@@ -408,7 +418,7 @@ export function InventoryClient({
                           </Badge>
                         )}
                       </div>
-                      {book?.book_number && (
+                      {book?.book_number && !isJysepBook(book) && (
                         <div className="text-xs text-muted-foreground">
                           {book.title}
                         </div>
