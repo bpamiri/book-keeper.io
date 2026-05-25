@@ -537,10 +537,9 @@ export async function updateOrderItem(
       return { error: 'Unit sale price must be non-negative' }
 
     // Snapshot new publication_status if book changed
-    const newPublicationStatus: PublicationStatus =
+    const newPublicationStatus: PublicationStatus | null =
       data.ruhi_book_id && data.ruhi_book_id !== current.ruhi_book_id
-        ? (await getBookPublicationStatus(supabase, newRuhiBookId)) ??
-          (current.publication_status as PublicationStatus)
+        ? await getBookPublicationStatus(supabase, newRuhiBookId)
         : (current.publication_status as PublicationStatus)
 
     if (!newPublicationStatus) return { error: 'Book not found in catalog' }
