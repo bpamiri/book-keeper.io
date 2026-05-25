@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ export function OrdersClient({
   profiles,
   institutions,
 }: OrdersClientProps) {
+  const router = useRouter();
   const profilesById = new Map(profiles.map((p) => [p.id, p]));
   const institutionsById = new Map(institutions.map((i) => [i.id, i]));
   const itemsByOrder = new Map<string, BookOrderItem[]>();
@@ -119,9 +121,7 @@ export function OrdersClient({
                   <TableRow
                     key={order.id}
                     className="cursor-pointer hover:bg-accent/50"
-                    onClick={() => {
-                      window.location.href = `/clusters/${clusterId}/orders/${order.id}`;
-                    }}
+                    onClick={() => router.push(`/clusters/${clusterId}/orders/${order.id}`)}
                   >
                     <TableCell>{order.order_date}</TableCell>
                     <TableCell>{order.supplier ?? "—"}</TableCell>
