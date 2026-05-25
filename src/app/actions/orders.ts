@@ -381,3 +381,123 @@ export async function recordReimbursement(
     return { error: 'Failed to record reimbursement' }
   }
 }
+
+export async function addOrderItem(
+  orderId: string,
+  data: {
+    ruhi_book_id: string
+    language: BookLanguage
+    storage_location_id: string
+    quantity: number
+    unit_cost: number
+    unit_sale_price: number
+    notes?: string | null
+  }
+) {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+    if (authError || !user) return { error: 'Not authenticated' }
+
+    if (data.quantity <= 0) return { error: 'Quantity must be positive' }
+    if (data.unit_cost < 0) return { error: 'Unit cost must be non-negative' }
+    if (data.unit_sale_price < 0)
+      return { error: 'Unit sale price must be non-negative' }
+
+    const { data: order, error: orderError } = await supabase
+      .from('book_orders')
+      .select('id, cluster_id')
+      .eq('id', orderId)
+      .single()
+
+    if (orderError || !order) return { error: 'Order not found' }
+
+    const adminCheck = await verifyOrderAdmin(order.cluster_id)
+    if ('error' in adminCheck) return { error: adminCheck.error }
+
+    const publication_status = await getBookPublicationStatus(
+      supabase,
+      data.ruhi_book_id
+    )
+    if (!publication_status) return { error: 'Book not found in catalog' }
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('book_order_items')
+      .insert({
+        order_id: orderId,
+        ruhi_book_id: data.ruhi_book_id,
+        language: data.language ?? DEFAULT_BOOK_LANGUAGE,
+        publication_status,
+        storage_location_id: data.storage_location_id,
+        quantity: data.quantity,
+        unit_cost: data.unit_cost,
+        unit_sale_price: data.unit_sale_price,
+        notes: data.notes ?? null,
+      })
+      .select()
+      .single()
+
+    if (insertError || !inserted) {
+      return { error: insertError?.message ?? 'Failed to add item' }
+    }
+
+    // Increment inventory at the target location (same shape as createOrder)
+    const { data: existing } = await supabase
+      .from('inventory')
+      .select('id, quantity')
+      .eq('cluster_id', order.cluster_id)
+      .eq('storage_location_id', data.storage_location_id)
+      .eq('ruhi_book_id', data.ruhi_book_id)
+      .eq('language', data.language)
+      .eq('publication_status', publication_status)
+      .maybeSingle()
+
+    const previousQuantity = existing?.quantity ?? 0
+    const newQuantity = previousQuantity + data.quantity
+
+    if (existing) {
+      const { error: incError } = await supabase
+        .from('inventory')
+        .update({ quantity: newQuantity, updated_by: user.id })
+        .eq('id', existing.id)
+      if (incError) return { error: incError.message }
+    } else {
+      const { error: createInvError } = await supabase.from('inventory').insert(
+        {
+          cluster_id: order.cluster_id,
+          storage_location_id: data.storage_location_id,
+          ruhi_book_id: data.ruhi_book_id,
+          language: data.language,
+          publication_status,
+          quantity: data.quantity,
+          updated_by: user.id,
+        }
+      )
+      if (createInvError) return { error: createInvError.message }
+    }
+
+    await supabase.from('inventory_log').insert({
+      cluster_id: order.cluster_id,
+      storage_location_id: data.storage_location_id,
+      ruhi_book_id: data.ruhi_book_id,
+      language: data.language,
+      publication_status,
+      change_type: 'ordered' as const,
+      quantity_change: data.quantity,
+      previous_quantity: previousQuantity,
+      new_quantity: newQuantity,
+      related_order_item_id: inserted.id,
+      notes: data.notes ?? null,
+      performed_by: user.id,
+    })
+
+    revalidatePath(`/clusters/${order.cluster_id}/orders/${orderId}`)
+    revalidatePath(`/clusters/${order.cluster_id}`)
+    return { data: inserted }
+  } catch {
+    return { error: 'Failed to add order item' }
+  }
+}
