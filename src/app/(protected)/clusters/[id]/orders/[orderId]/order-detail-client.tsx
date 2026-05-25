@@ -211,7 +211,17 @@ export function OrderDetailClient({
               </p>
             )}
             {isAdmin && (
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <Dialog
+                open={dialogOpen}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setRbStatus(order.reimbursement_status);
+                    setRbAmount(String(order.reimbursed_amount));
+                    setRbNotes(order.reimbursement_notes ?? "");
+                  }
+                  setDialogOpen(open);
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="mt-3">
                     Record reimbursement
