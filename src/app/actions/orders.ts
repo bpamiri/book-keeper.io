@@ -245,11 +245,6 @@ export async function updateOrderHeader(
 ) {
   try {
     const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-    if (authError || !user) return { error: 'Not authenticated' }
 
     const { data: current, error: fetchError } = await supabase
       .from('book_orders')
@@ -323,16 +318,11 @@ export async function recordReimbursement(
   }
 ) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-    if (authError || !user) return { error: 'Not authenticated' }
-
     if (data.amount < 0) {
       return { error: 'Reimbursed amount cannot be negative' }
     }
+
+    const supabase = await createClient()
 
     const { data: current, error: fetchError } = await supabase
       .from('book_orders')
@@ -344,6 +334,7 @@ export async function recordReimbursement(
 
     const adminCheck = await verifyOrderAdmin(current.cluster_id)
     if ('error' in adminCheck) return { error: adminCheck.error }
+    const { user } = adminCheck
 
     // When moving INTO 'reimbursed', set reimbursed_at/_by.
     // When moving OUT of 'reimbursed', clear them.
@@ -395,17 +386,12 @@ export async function addOrderItem(
   }
 ) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-    if (authError || !user) return { error: 'Not authenticated' }
-
     if (data.quantity <= 0) return { error: 'Quantity must be positive' }
     if (data.unit_cost < 0) return { error: 'Unit cost must be non-negative' }
     if (data.unit_sale_price < 0)
       return { error: 'Unit sale price must be non-negative' }
+
+    const supabase = await createClient()
 
     const { data: order, error: orderError } = await supabase
       .from('book_orders')
@@ -417,6 +403,7 @@ export async function addOrderItem(
 
     const adminCheck = await verifyOrderAdmin(order.cluster_id)
     if ('error' in adminCheck) return { error: adminCheck.error }
+    const { user } = adminCheck
 
     const publication_status = await getBookPublicationStatus(
       supabase,
