@@ -102,6 +102,18 @@ export async function createOrder(data: {
       }
     }
 
+    // Validate the institution (if any) belongs to this cluster
+    if (data.payer_kind === 'institution' && data.paid_by_institution_id) {
+      const { data: inst } = await supabase
+        .from('payer_institutions')
+        .select('cluster_id')
+        .eq('id', data.paid_by_institution_id)
+        .single()
+      if (!inst || inst.cluster_id !== data.cluster_id) {
+        return { error: 'Institution does not belong to this cluster' }
+      }
+    }
+
     if (!data.items.length) return { error: 'At least one item is required' }
     for (const item of data.items) {
       if (item.quantity <= 0) return { error: 'Quantities must be positive' }
@@ -282,6 +294,18 @@ export async function updateOrderHeader(
           error:
             'Institutional orders require paid_by_institution_id and must not have paid_by_user_id',
         }
+      }
+    }
+
+    // Validate the institution (if any) belongs to this cluster
+    if (payer_kind === 'institution' && paid_by_institution_id) {
+      const { data: inst } = await supabase
+        .from('payer_institutions')
+        .select('cluster_id')
+        .eq('id', paid_by_institution_id)
+        .single()
+      if (!inst || inst.cluster_id !== current.cluster_id) {
+        return { error: 'Institution does not belong to this cluster' }
       }
     }
 
@@ -482,6 +506,7 @@ export async function addOrderItem(
     })
 
     revalidatePath(`/clusters/${order.cluster_id}/orders/${orderId}`)
+    revalidatePath(`/clusters/${order.cluster_id}/orders`)
     revalidatePath(`/clusters/${order.cluster_id}`)
     return { data: inserted }
   } catch {
@@ -699,6 +724,7 @@ export async function updateOrderItem(
     if (updateErr) return { error: updateErr.message }
 
     revalidatePath(`/clusters/${order.cluster_id}/orders/${current.order_id}`)
+    revalidatePath(`/clusters/${order.cluster_id}/orders`)
     revalidatePath(`/clusters/${order.cluster_id}`)
     return { data: updated }
   } catch {
@@ -770,6 +796,7 @@ export async function deleteOrderItem(itemId: string) {
     if (deleteErr) return { error: deleteErr.message }
 
     revalidatePath(`/clusters/${order.cluster_id}/orders/${current.order_id}`)
+    revalidatePath(`/clusters/${order.cluster_id}/orders`)
     revalidatePath(`/clusters/${order.cluster_id}`)
     return { data: { success: true } }
   } catch {

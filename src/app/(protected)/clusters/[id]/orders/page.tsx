@@ -33,7 +33,7 @@ export default async function OrdersPage({
   if (!rawMembership) redirect("/dashboard");
   const membership = rawMembership as unknown as ClusterMember;
 
-  const [ordersRes, itemsRes, profilesRes, institutionsRes] = await Promise.all([
+  const [ordersRes, itemsRes, membersRes, institutionsRes] = await Promise.all([
     supabase
       .from("book_orders")
       .select("*")
@@ -44,8 +44,10 @@ export default async function OrdersPage({
       .select("*, book_orders!inner(cluster_id)")
       .eq("book_orders.cluster_id", id),
     supabase
-      .from("profiles")
-      .select("id, full_name, email, role, created_at, updated_at"),
+      .from("cluster_members")
+      .select("*, profiles!cluster_members_user_id_fkey(id, full_name, email, role, created_at, updated_at)")
+      .eq("cluster_id", id)
+      .eq("status", "active"),
     supabase
       .from("payer_institutions")
       .select("*")
@@ -56,7 +58,9 @@ export default async function OrdersPage({
   const items = (itemsRes.data ?? []) as unknown as (BookOrderItem & {
     book_orders: { cluster_id: string };
   })[];
-  const profiles = (profilesRes.data ?? []) as unknown as Profile[];
+  const profiles = (membersRes.data ?? [])
+    .map((row) => (row as unknown as { profiles: Profile | null }).profiles)
+    .filter((p): p is Profile => p !== null);
   const institutions = (institutionsRes.data ?? []) as unknown as PayerInstitution[];
 
   return (

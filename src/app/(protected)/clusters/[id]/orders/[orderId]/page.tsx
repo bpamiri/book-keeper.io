@@ -45,7 +45,11 @@ export default async function OrderDetailPage({
         .from("storage_locations")
         .select("*")
         .eq("cluster_id", id),
-      supabase.from("profiles").select("*"),
+      supabase
+        .from("cluster_members")
+        .select("*, profiles!cluster_members_user_id_fkey(id, full_name, email, role, created_at, updated_at)")
+        .eq("cluster_id", id)
+        .eq("status", "active"),
       supabase
         .from("payer_institutions")
         .select("*")
@@ -60,7 +64,9 @@ export default async function OrderDetailPage({
   const items = (itemsRes.data ?? []) as BookOrderItem[];
   const books = (booksRes.data ?? []) as RuhiBook[];
   const locations = (locationsRes.data ?? []) as StorageLocation[];
-  const profiles = (profilesRes.data ?? []) as Profile[];
+  const profiles = (profilesRes.data ?? [])
+    .map((row) => (row as unknown as { profiles: Profile | null }).profiles)
+    .filter((p): p is Profile => p !== null);
   const institutions = (institutionsRes.data ?? []) as PayerInstitution[];
 
   return (
