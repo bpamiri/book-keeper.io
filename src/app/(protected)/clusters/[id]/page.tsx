@@ -7,6 +7,7 @@ import {
   Package,
   ClipboardList,
   History,
+  ShoppingCart,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
@@ -58,25 +59,34 @@ export default async function ClusterDetailPage({
   const cluster = rawCluster as unknown as Cluster;
 
   // Get stats
-  const [inventoryResult, locationsResult, requestsResult, membersResult] =
-    await Promise.all([
-      supabase.from("inventory").select("quantity").eq("cluster_id", id),
-      supabase
-        .from("storage_locations")
-        .select("id")
-        .eq("cluster_id", id)
-        .eq("is_active", true),
-      supabase
-        .from("book_requests")
-        .select("id")
-        .eq("cluster_id", id)
-        .eq("status", "pending"),
-      supabase
-        .from("cluster_members")
-        .select("id")
-        .eq("cluster_id", id)
-        .eq("status", "active"),
-    ]);
+  const [
+    inventoryResult,
+    locationsResult,
+    requestsResult,
+    membersResult,
+    ordersResult,
+  ] = await Promise.all([
+    supabase.from("inventory").select("quantity").eq("cluster_id", id),
+    supabase
+      .from("storage_locations")
+      .select("id")
+      .eq("cluster_id", id)
+      .eq("is_active", true),
+    supabase
+      .from("book_requests")
+      .select("id")
+      .eq("cluster_id", id)
+      .eq("status", "pending"),
+    supabase
+      .from("cluster_members")
+      .select("id")
+      .eq("cluster_id", id)
+      .eq("status", "active"),
+    supabase
+      .from("book_orders")
+      .select("id, reimbursement_status")
+      .eq("cluster_id", id),
+  ]);
 
   const totalBooks = (
     (inventoryResult.data ?? []) as { quantity: number }[]
@@ -84,6 +94,10 @@ export default async function ClusterDetailPage({
   const locationCount = locationsResult.data?.length ?? 0;
   const pendingRequests = requestsResult.data?.length ?? 0;
   const memberCount = membersResult.data?.length ?? 0;
+  const totalOrders = ordersResult.data?.length ?? 0;
+  const owedOrders = (ordersResult.data ?? []).filter(
+    (o) => o.reimbursement_status === "owed" || o.reimbursement_status === "partial"
+  ).length;
 
   const isAdmin = membership.cluster_role === "admin";
 
@@ -105,6 +119,15 @@ export default async function ClusterDetailPage({
       description: `${pendingRequests} pending`,
       href: `/clusters/${id}/requests`,
       icon: ClipboardList,
+    },
+    {
+      title: "Orders",
+      description:
+        owedOrders > 0
+          ? `${totalOrders} total, ${owedOrders} awaiting reimbursement`
+          : `${totalOrders} total`,
+      href: `/clusters/${id}/orders`,
+      icon: ShoppingCart,
     },
     {
       title: "Request Books",
@@ -176,6 +199,11 @@ export default async function ClusterDetailPage({
         <div className="flex gap-2">
           <Button asChild variant="outline" size="sm">
             <Link href={`/clusters/${id}/members`}>Invite Members</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/clusters/${id}/orders/payer-institutions`}>
+              Manage Payer Institutions
+            </Link>
           </Button>
         </div>
       )}
