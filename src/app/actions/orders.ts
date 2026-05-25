@@ -705,3 +705,74 @@ export async function updateOrderItem(
     return { error: 'Failed to update order item' }
   }
 }
+
+export async function deleteOrderItem(itemId: string) {
+  try {
+    const supabase = await createClient()
+
+    const { data: current, error: fetchError } = await supabase
+      .from('book_order_items')
+      .select('*, book_orders!inner(cluster_id)')
+      .eq('id', itemId)
+      .single()
+
+    if (fetchError || !current) return { error: 'Order item not found' }
+
+    const order = current.book_orders as unknown as { cluster_id: string }
+    const adminCheck = await verifyOrderAdmin(order.cluster_id)
+    if ('error' in adminCheck) return { error: adminCheck.error }
+    const { user } = adminCheck
+
+    // Subtract the item's quantity from inventory
+    const { data: inv } = await supabase
+      .from('inventory')
+      .select('id, quantity')
+      .eq('cluster_id', order.cluster_id)
+      .eq('storage_location_id', current.storage_location_id)
+      .eq('ruhi_book_id', current.ruhi_book_id)
+      .eq('language', current.language)
+      .eq('publication_status', current.publication_status)
+      .maybeSingle()
+
+    if (!inv || inv.quantity < current.quantity) {
+      return {
+        error: `Insufficient stock at location to delete this item (have ${inv?.quantity ?? 0}, need ${current.quantity})`,
+      }
+    }
+
+    const newInvQty = inv.quantity - current.quantity
+    const { error: updErr } = await supabase
+      .from('inventory')
+      .update({ quantity: newInvQty, updated_by: user.id })
+      .eq('id', inv.id)
+    if (updErr) return { error: updErr.message }
+
+    await supabase.from('inventory_log').insert({
+      cluster_id: order.cluster_id,
+      storage_location_id: current.storage_location_id,
+      ruhi_book_id: current.ruhi_book_id,
+      language: current.language,
+      publication_status: current.publication_status,
+      change_type: 'adjustment' as const,
+      quantity_change: -current.quantity,
+      previous_quantity: inv.quantity,
+      new_quantity: newInvQty,
+      related_order_item_id: current.id,
+      notes: 'Order item deleted',
+      performed_by: user.id,
+    })
+
+    const { error: deleteErr } = await supabase
+      .from('book_order_items')
+      .delete()
+      .eq('id', itemId)
+
+    if (deleteErr) return { error: deleteErr.message }
+
+    revalidatePath(`/clusters/${order.cluster_id}/orders/${current.order_id}`)
+    revalidatePath(`/clusters/${order.cluster_id}`)
+    return { data: { success: true } }
+  } catch {
+    return { error: 'Failed to delete order item' }
+  }
+}
