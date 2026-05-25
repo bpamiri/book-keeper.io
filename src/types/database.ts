@@ -11,9 +11,11 @@ export type ClusterRole = 'admin' | 'collaborator';
 export type MemberStatus = 'pending' | 'active';
 export type BookCategory = 'main_sequence' | 'branch_book3' | 'branch_book5' | 'junior_youth_text';
 export type PublicationStatus = 'published' | 'pre_publication' | 'in_development';
-export type ChangeType = 'added' | 'removed' | 'transferred' | 'adjustment' | 'fulfilled';
+export type ChangeType = 'added' | 'removed' | 'transferred' | 'adjustment' | 'fulfilled' | 'ordered';
 export type RequestStatus = 'pending' | 'approved' | 'fulfilled' | 'denied';
 export type BookLanguage = 'English' | 'Spanish' | 'Farsi' | 'Chinese';
+export type PayerKind = 'individual' | 'institution';
+export type ReimbursementStatus = 'not_required' | 'owed' | 'partial' | 'reimbursed';
 
 // ------------------------------------------------------------
 // Database Type (Supabase conventions)
@@ -470,6 +472,7 @@ export type Database = {
           new_quantity: number;
           related_request_id: string | null;
           related_fulfillment_id: string | null;
+          related_order_item_id: string | null;
           notes: string | null;
           performed_by: string;
           created_at: string;
@@ -487,6 +490,7 @@ export type Database = {
           new_quantity: number;
           related_request_id?: string | null;
           related_fulfillment_id?: string | null;
+          related_order_item_id?: string | null;
           notes?: string | null;
           performed_by: string;
           created_at?: string;
@@ -504,6 +508,7 @@ export type Database = {
           new_quantity?: number;
           related_request_id?: string | null;
           related_fulfillment_id?: string | null;
+          related_order_item_id?: string | null;
           notes?: string | null;
           performed_by?: string;
           created_at?: string;
@@ -545,10 +550,225 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "inventory_log_related_order_item_id_fkey";
+            columns: ["related_order_item_id"];
+            isOneToOne: false;
+            referencedRelation: "book_order_items";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "inventory_log_performed_by_fkey";
             columns: ["performed_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payer_institutions: {
+        Row: {
+          id: string;
+          cluster_id: string;
+          name: string;
+          description: string | null;
+          sort_order: number;
+          is_active: boolean;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          cluster_id: string;
+          name: string;
+          description?: string | null;
+          sort_order?: number;
+          is_active?: boolean;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          cluster_id?: string;
+          name?: string;
+          description?: string | null;
+          sort_order?: number;
+          is_active?: boolean;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payer_institutions_cluster_id_fkey";
+            columns: ["cluster_id"];
+            isOneToOne: false;
+            referencedRelation: "clusters";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payer_institutions_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      book_orders: {
+        Row: {
+          id: string;
+          cluster_id: string;
+          order_date: string;
+          supplier: string | null;
+          notes: string | null;
+          payer_kind: PayerKind;
+          paid_by_user_id: string | null;
+          paid_by_institution_id: string | null;
+          reimbursement_status: ReimbursementStatus;
+          reimbursed_amount: number;
+          reimbursed_at: string | null;
+          reimbursed_by: string | null;
+          reimbursement_notes: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          cluster_id: string;
+          order_date?: string;
+          supplier?: string | null;
+          notes?: string | null;
+          payer_kind: PayerKind;
+          paid_by_user_id?: string | null;
+          paid_by_institution_id?: string | null;
+          reimbursement_status?: ReimbursementStatus;
+          reimbursed_amount?: number;
+          reimbursed_at?: string | null;
+          reimbursed_by?: string | null;
+          reimbursement_notes?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          cluster_id?: string;
+          order_date?: string;
+          supplier?: string | null;
+          notes?: string | null;
+          payer_kind?: PayerKind;
+          paid_by_user_id?: string | null;
+          paid_by_institution_id?: string | null;
+          reimbursement_status?: ReimbursementStatus;
+          reimbursed_amount?: number;
+          reimbursed_at?: string | null;
+          reimbursed_by?: string | null;
+          reimbursement_notes?: string | null;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "book_orders_cluster_id_fkey";
+            columns: ["cluster_id"];
+            isOneToOne: false;
+            referencedRelation: "clusters";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "book_orders_paid_by_user_id_fkey";
+            columns: ["paid_by_user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "book_orders_paid_by_institution_id_fkey";
+            columns: ["paid_by_institution_id"];
+            isOneToOne: false;
+            referencedRelation: "payer_institutions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "book_orders_reimbursed_by_fkey";
+            columns: ["reimbursed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "book_orders_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      book_order_items: {
+        Row: {
+          id: string;
+          order_id: string;
+          ruhi_book_id: string;
+          language: BookLanguage;
+          publication_status: PublicationStatus;
+          storage_location_id: string;
+          quantity: number;
+          unit_cost: number;
+          unit_sale_price: number;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          ruhi_book_id: string;
+          language: BookLanguage;
+          publication_status: PublicationStatus;
+          storage_location_id: string;
+          quantity: number;
+          unit_cost: number;
+          unit_sale_price: number;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          ruhi_book_id?: string;
+          language?: BookLanguage;
+          publication_status?: PublicationStatus;
+          storage_location_id?: string;
+          quantity?: number;
+          unit_cost?: number;
+          unit_sale_price?: number;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "book_order_items_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "book_orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "book_order_items_ruhi_book_id_fkey";
+            columns: ["ruhi_book_id"];
+            isOneToOne: false;
+            referencedRelation: "ruhi_books";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "book_order_items_storage_location_id_fkey";
+            columns: ["storage_location_id"];
+            isOneToOne: false;
+            referencedRelation: "storage_locations";
             referencedColumns: ["id"];
           },
         ];
@@ -578,6 +798,8 @@ export type Database = {
       change_type: ChangeType;
       request_status: RequestStatus;
       book_language: BookLanguage;
+      payer_kind: PayerKind;
+      reimbursement_status: ReimbursementStatus;
     };
   };
 };
@@ -605,3 +827,6 @@ export type Inventory = Tables<'inventory'>;
 export type BookRequest = Tables<'book_requests'>;
 export type RequestFulfillment = Tables<'request_fulfillments'>;
 export type InventoryLog = Tables<'inventory_log'>;
+export type PayerInstitution = Tables<'payer_institutions'>;
+export type BookOrder = Tables<'book_orders'>;
+export type BookOrderItem = Tables<'book_order_items'>;

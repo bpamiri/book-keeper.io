@@ -7,6 +7,7 @@ import {
   ArrowLeftRight,
   Wrench,
   PackageCheck,
+  ShoppingCart,
   Search,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ const changeTypeConfig: Record<
   transferred: { label: "Transferred", variant: "secondary", icon: ArrowLeftRight },
   adjustment: { label: "Adjusted", variant: "outline", icon: Wrench },
   fulfilled: { label: "Fulfilled", variant: "secondary", icon: PackageCheck },
+  ordered: { label: "Ordered", variant: "default", icon: ShoppingCart },
 };
 
 interface ActivityClientProps {
