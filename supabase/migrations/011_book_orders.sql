@@ -34,8 +34,6 @@ CREATE TABLE payer_institutions (
   UNIQUE (cluster_id, name)
 );
 
-CREATE INDEX idx_payer_institutions_cluster_id ON payer_institutions(cluster_id);
-
 CREATE TRIGGER trg_payer_institutions_updated_at
   BEFORE UPDATE ON payer_institutions
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -53,7 +51,7 @@ CREATE TABLE book_orders (
   payer_kind payer_kind NOT NULL,
   paid_by_user_id uuid REFERENCES profiles(id),
   paid_by_institution_id uuid REFERENCES payer_institutions(id),
-  reimbursement_status reimbursement_status NOT NULL DEFAULT 'owed',
+  reimbursement_status reimbursement_status NOT NULL,
   reimbursed_amount numeric(10,2) NOT NULL DEFAULT 0,
   reimbursed_at timestamptz,
   reimbursed_by uuid REFERENCES profiles(id),
@@ -88,7 +86,7 @@ CREATE TABLE book_order_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id uuid NOT NULL REFERENCES book_orders(id) ON DELETE CASCADE,
   ruhi_book_id uuid NOT NULL REFERENCES ruhi_books(id),
-  language text NOT NULL,
+  language book_language NOT NULL,
   publication_status publication_status NOT NULL,
   storage_location_id uuid NOT NULL REFERENCES storage_locations(id),
   quantity integer NOT NULL CHECK (quantity > 0),
@@ -167,7 +165,9 @@ CREATE POLICY payer_institutions_insert ON payer_institutions
   FOR INSERT WITH CHECK (is_platform_admin() OR is_cluster_admin(cluster_id));
 
 CREATE POLICY payer_institutions_update ON payer_institutions
-  FOR UPDATE USING (is_platform_admin() OR is_cluster_admin(cluster_id));
+  FOR UPDATE
+  USING (is_platform_admin() OR is_cluster_admin(cluster_id))
+  WITH CHECK (is_platform_admin() OR is_cluster_admin(cluster_id));
 
 CREATE POLICY payer_institutions_delete ON payer_institutions
   FOR DELETE USING (is_platform_admin() OR is_cluster_admin(cluster_id));
@@ -180,7 +180,9 @@ CREATE POLICY book_orders_insert ON book_orders
   FOR INSERT WITH CHECK (is_platform_admin() OR is_cluster_admin(cluster_id));
 
 CREATE POLICY book_orders_update ON book_orders
-  FOR UPDATE USING (is_platform_admin() OR is_cluster_admin(cluster_id));
+  FOR UPDATE
+  USING (is_platform_admin() OR is_cluster_admin(cluster_id))
+  WITH CHECK (is_platform_admin() OR is_cluster_admin(cluster_id));
 
 CREATE POLICY book_orders_delete ON book_orders
   FOR DELETE USING (is_platform_admin());
@@ -205,7 +207,15 @@ CREATE POLICY book_order_items_insert ON book_order_items
   );
 
 CREATE POLICY book_order_items_update ON book_order_items
-  FOR UPDATE USING (
+  FOR UPDATE
+  USING (
+    is_platform_admin() OR EXISTS (
+      SELECT 1 FROM book_orders bo
+      WHERE bo.id = book_order_items.order_id
+        AND is_cluster_admin(bo.cluster_id)
+    )
+  )
+  WITH CHECK (
     is_platform_admin() OR EXISTS (
       SELECT 1 FROM book_orders bo
       WHERE bo.id = book_order_items.order_id
