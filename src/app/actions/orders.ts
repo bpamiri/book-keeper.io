@@ -231,3 +231,153 @@ export async function createOrder(data: {
     return { error: 'Failed to create order' }
   }
 }
+
+export async function updateOrderHeader(
+  id: string,
+  data: {
+    order_date?: string
+    supplier?: string | null
+    notes?: string | null
+    payer_kind?: PayerKind
+    paid_by_user_id?: string | null
+    paid_by_institution_id?: string | null
+  }
+) {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+    if (authError || !user) return { error: 'Not authenticated' }
+
+    const { data: current, error: fetchError } = await supabase
+      .from('book_orders')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !current) return { error: 'Order not found' }
+
+    const adminCheck = await verifyOrderAdmin(current.cluster_id)
+    if ('error' in adminCheck) return { error: adminCheck.error }
+
+    // Resolve final payer values
+    const payer_kind = data.payer_kind ?? current.payer_kind
+    const paid_by_user_id =
+      data.paid_by_user_id !== undefined
+        ? data.paid_by_user_id
+        : current.paid_by_user_id
+    const paid_by_institution_id =
+      data.paid_by_institution_id !== undefined
+        ? data.paid_by_institution_id
+        : current.paid_by_institution_id
+
+    // Re-validate the CHECK constraint shape in app code
+    if (payer_kind === 'individual') {
+      if (!paid_by_user_id || paid_by_institution_id) {
+        return {
+          error:
+            'Individual orders require paid_by_user_id and must not have paid_by_institution_id',
+        }
+      }
+    } else {
+      if (!paid_by_institution_id || paid_by_user_id) {
+        return {
+          error:
+            'Institutional orders require paid_by_institution_id and must not have paid_by_user_id',
+        }
+      }
+    }
+
+    const { data: updated, error } = await supabase
+      .from('book_orders')
+      .update({
+        order_date: data.order_date ?? current.order_date,
+        supplier: data.supplier !== undefined ? data.supplier : current.supplier,
+        notes: data.notes !== undefined ? data.notes : current.notes,
+        payer_kind,
+        paid_by_user_id,
+        paid_by_institution_id,
+      })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) return { error: error.message }
+
+    revalidatePath(`/clusters/${current.cluster_id}/orders/${id}`)
+    revalidatePath(`/clusters/${current.cluster_id}/orders`)
+    return { data: updated }
+  } catch {
+    return { error: 'Failed to update order' }
+  }
+}
+
+export async function recordReimbursement(
+  id: string,
+  data: {
+    status: ReimbursementStatus
+    amount: number
+    notes?: string | null
+  }
+) {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+    if (authError || !user) return { error: 'Not authenticated' }
+
+    if (data.amount < 0) {
+      return { error: 'Reimbursed amount cannot be negative' }
+    }
+
+    const { data: current, error: fetchError } = await supabase
+      .from('book_orders')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !current) return { error: 'Order not found' }
+
+    const adminCheck = await verifyOrderAdmin(current.cluster_id)
+    if ('error' in adminCheck) return { error: adminCheck.error }
+
+    // When moving INTO 'reimbursed', set reimbursed_at/_by.
+    // When moving OUT of 'reimbursed', clear them.
+    const wasReimbursed = current.reimbursement_status === 'reimbursed'
+    const nowReimbursed = data.status === 'reimbursed'
+
+    const patch: Record<string, unknown> = {
+      reimbursement_status: data.status,
+      reimbursed_amount: data.amount,
+      reimbursement_notes:
+        data.notes !== undefined ? data.notes : current.reimbursement_notes,
+    }
+
+    if (nowReimbursed && !wasReimbursed) {
+      patch.reimbursed_at = new Date().toISOString()
+      patch.reimbursed_by = user.id
+    } else if (!nowReimbursed && wasReimbursed) {
+      patch.reimbursed_at = null
+      patch.reimbursed_by = null
+    }
+
+    const { data: updated, error } = await supabase
+      .from('book_orders')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) return { error: error.message }
+
+    revalidatePath(`/clusters/${current.cluster_id}/orders/${id}`)
+    revalidatePath(`/clusters/${current.cluster_id}/orders`)
+    return { data: updated }
+  } catch {
+    return { error: 'Failed to record reimbursement' }
+  }
+}
