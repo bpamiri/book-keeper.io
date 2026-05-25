@@ -69,6 +69,19 @@ export function OrdersClient({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Link href="/dashboard" className="hover:underline">
+              Dashboard
+            </Link>
+            <span>/</span>
+            <Link
+              href={`/clusters/${clusterId}`}
+              className="hover:underline"
+            >
+              Cluster
+            </Link>
+            <span>/</span>
+          </div>
           <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
           <p className="text-muted-foreground">
             Track book purchases, costs, payers, and reimbursements.

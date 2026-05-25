@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
@@ -169,15 +170,34 @@ export function NewOrderForm({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">New Order</h1>
+      <div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/dashboard" className="hover:underline">
+            Dashboard
+          </Link>
+          <span>/</span>
+          <Link href={`/clusters/${clusterId}`} className="hover:underline">
+            Cluster
+          </Link>
+          <span>/</span>
+          <Link
+            href={`/clusters/${clusterId}/orders`}
+            className="hover:underline"
+          >
+            Orders
+          </Link>
+          <span>/</span>
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight">New Order</h1>
+      </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Order details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="order_date">Order date</Label>
               <Input
                 id="order_date"
@@ -186,7 +206,7 @@ export function NewOrderForm({
                 onChange={(e) => setOrderDate(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="supplier">Supplier</Label>
               <Input
                 id="supplier"
@@ -268,8 +288,8 @@ export function NewOrderForm({
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="min-w-0 space-y-2">
               <Label>Reimbursement status</Label>
               <Select
                 value={reimbursementStatus}
@@ -288,7 +308,7 @@ export function NewOrderForm({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="reimbursement_notes">Reimbursement notes</Label>
               <Input
                 id="reimbursement_notes"
@@ -317,7 +337,7 @@ export function NewOrderForm({
           {items.map((row, idx) => (
             <div
               key={idx}
-              className="grid gap-3 rounded-md border p-3 sm:grid-cols-[2fr_1fr_2fr_1fr_1fr_1fr_auto]"
+              className="grid gap-3 rounded-md border p-3 lg:grid-cols-[2fr_1fr_2fr_1fr_1fr_1fr_auto]"
             >
               <div className="space-y-1">
                 <Label>Book</Label>

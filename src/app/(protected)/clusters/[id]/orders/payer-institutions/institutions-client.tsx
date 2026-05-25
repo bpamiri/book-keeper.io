@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
@@ -87,6 +88,23 @@ export function InstitutionsClient({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Link href="/dashboard" className="hover:underline">
+              Dashboard
+            </Link>
+            <span>/</span>
+            <Link href={`/clusters/${clusterId}`} className="hover:underline">
+              Cluster
+            </Link>
+            <span>/</span>
+            <Link
+              href={`/clusters/${clusterId}/orders`}
+              className="hover:underline"
+            >
+              Orders
+            </Link>
+            <span>/</span>
+          </div>
           <h1 className="text-2xl font-bold tracking-tight">
             Payer Institutions
           </h1>
