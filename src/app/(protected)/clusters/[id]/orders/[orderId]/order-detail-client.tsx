@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/table";
 import {
   addOrderItem,
+  deleteOrder,
   deleteOrderItem,
   recordReimbursement,
   updateOrderItem,
@@ -144,6 +145,21 @@ export function OrderDetailClient({
   });
 
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteOrderOpen, setDeleteOrderOpen] = useState(false);
+
+  const handleDeleteOrder = () => {
+    startTransition(async () => {
+      const result = await deleteOrder(order.id);
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        setDeleteOrderOpen(false);
+        return;
+      }
+      toast.success("Order deleted");
+      setDeleteOrderOpen(false);
+      router.push(`/clusters/${clusterId}/orders`);
+    });
+  };
 
   const startEdit = (item: BookOrderItem) => {
     setEditingId(item.id);
@@ -707,6 +723,34 @@ export function OrderDetailClient({
         </CardContent>
       </Card>
 
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base text-destructive">
+              Danger zone
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm text-muted-foreground">
+                Permanently delete this order.
+                {order.is_backfill
+                  ? " Because this is a backfill order, inventory will not change."
+                  : " Inventory at the items' locations will be reversed. If any line can't be reversed (stock already sold), the delete will fail."}
+              </p>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setDeleteOrderOpen(true)}
+              >
+                <Trash2 className="mr-2 size-4" />
+                Delete order
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <AlertDialog
         open={deleteTargetId !== null}
         onOpenChange={(open) => {
@@ -728,6 +772,34 @@ export function OrderDetailClient({
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {pending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteOrderOpen}
+        onOpenChange={(open) => {
+          if (!open) setDeleteOrderOpen(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {order.is_backfill
+                ? "This backfill order will be removed. No inventory changes will be made because backfill orders never affected stock."
+                : "This will reverse inventory at each line item's storage location and permanently delete the order and its items. If any line can't be reversed (because stock has already been sold or transferred), the delete will be refused and nothing will change."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteOrder}
+              disabled={pending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {pending ? "Deleting..." : "Delete order"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
