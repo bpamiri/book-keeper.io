@@ -70,6 +70,7 @@ export async function createOrder(data: {
   paid_by_institution_id?: string | null
   reimbursement_status?: ReimbursementStatus
   reimbursement_notes?: string | null
+  already_stocked?: boolean
   items: Array<{
     ruhi_book_id: string
     language: BookLanguage
@@ -155,6 +156,7 @@ export async function createOrder(data: {
         paid_by_institution_id: data.paid_by_institution_id ?? null,
         reimbursement_status,
         reimbursement_notes: data.reimbursement_notes ?? null,
+        is_backfill: data.already_stocked ?? false,
         created_by: user.id,
       })
       .select()
@@ -186,54 +188,58 @@ export async function createOrder(data: {
         return { error: itemError?.message ?? 'Failed to insert order item' }
       }
 
-      // Increment inventory at the target location
-      const { data: existing } = await supabase
-        .from('inventory')
-        .select('id, quantity')
-        .eq('cluster_id', data.cluster_id)
-        .eq('storage_location_id', item.storage_location_id)
-        .eq('ruhi_book_id', item.ruhi_book_id)
-        .eq('language', item.language)
-        .eq('publication_status', item.publication_status)
-        .maybeSingle()
-
-      const previousQuantity = existing?.quantity ?? 0
-      const newQuantity = previousQuantity + item.quantity
-
-      if (existing) {
-        const { error: incError } = await supabase
+      if (!data.already_stocked) {
+        // Increment inventory at the target location
+        const { data: existing } = await supabase
           .from('inventory')
-          .update({ quantity: newQuantity, updated_by: user.id })
-          .eq('id', existing.id)
-        if (incError) return { error: incError.message }
-      } else {
-        const { error: insertError } = await supabase.from('inventory').insert({
+          .select('id, quantity')
+          .eq('cluster_id', data.cluster_id)
+          .eq('storage_location_id', item.storage_location_id)
+          .eq('ruhi_book_id', item.ruhi_book_id)
+          .eq('language', item.language)
+          .eq('publication_status', item.publication_status)
+          .maybeSingle()
+
+        const previousQuantity = existing?.quantity ?? 0
+        const newQuantity = previousQuantity + item.quantity
+
+        if (existing) {
+          const { error: incError } = await supabase
+            .from('inventory')
+            .update({ quantity: newQuantity, updated_by: user.id })
+            .eq('id', existing.id)
+          if (incError) return { error: incError.message }
+        } else {
+          const { error: insertError } = await supabase
+            .from('inventory')
+            .insert({
+              cluster_id: data.cluster_id,
+              storage_location_id: item.storage_location_id,
+              ruhi_book_id: item.ruhi_book_id,
+              language: item.language,
+              publication_status: item.publication_status,
+              quantity: item.quantity,
+              updated_by: user.id,
+            })
+          if (insertError) return { error: insertError.message }
+        }
+
+        // Log the change with provenance
+        await supabase.from('inventory_log').insert({
           cluster_id: data.cluster_id,
           storage_location_id: item.storage_location_id,
           ruhi_book_id: item.ruhi_book_id,
           language: item.language,
           publication_status: item.publication_status,
-          quantity: item.quantity,
-          updated_by: user.id,
+          change_type: 'ordered' as const,
+          quantity_change: item.quantity,
+          previous_quantity: previousQuantity,
+          new_quantity: newQuantity,
+          related_order_item_id: inserted.id,
+          notes: item.notes ?? null,
+          performed_by: user.id,
         })
-        if (insertError) return { error: insertError.message }
       }
-
-      // Log the change with provenance
-      await supabase.from('inventory_log').insert({
-        cluster_id: data.cluster_id,
-        storage_location_id: item.storage_location_id,
-        ruhi_book_id: item.ruhi_book_id,
-        language: item.language,
-        publication_status: item.publication_status,
-        change_type: 'ordered' as const,
-        quantity_change: item.quantity,
-        previous_quantity: previousQuantity,
-        new_quantity: newQuantity,
-        related_order_item_id: inserted.id,
-        notes: item.notes ?? null,
-        performed_by: user.id,
-      })
     }
 
     revalidatePath(`/clusters/${data.cluster_id}/orders`)
