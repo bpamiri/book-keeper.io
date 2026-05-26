@@ -231,7 +231,7 @@ export function NewOrderForm({
           <CardTitle className="text-base">Order details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <div className="min-w-0 space-y-2">
               <Label htmlFor="order_date">Order date</Label>
               <Input
@@ -323,7 +323,7 @@ export function NewOrderForm({
             </div>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <div className="min-w-0 space-y-2">
               <Label>Reimbursement status</Label>
               <Select
