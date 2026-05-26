@@ -29,6 +29,7 @@ import { createOrder } from "@/app/actions/orders";
 import { DEFAULT_BOOK_LANGUAGE } from "@/lib/languages";
 import type {
   BookLanguage,
+  ClusterBookPricing,
   PayerInstitution,
   PayerKind,
   Profile,
@@ -43,6 +44,7 @@ interface NewOrderFormProps {
   locations: StorageLocation[];
   profiles: Profile[];
   institutions: PayerInstitution[];
+  pricing: ClusterBookPricing[];
 }
 
 interface ItemRow {
@@ -71,6 +73,7 @@ export function NewOrderForm({
   locations,
   profiles,
   institutions,
+  pricing,
 }: NewOrderFormProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -89,6 +92,11 @@ export function NewOrderForm({
   const [reimbursementNotes, setReimbursementNotes] = useState("");
 
   const [items, setItems] = useState<ItemRow[]>([emptyRow(locations)]);
+  const [alreadyStocked, setAlreadyStocked] = useState(false);
+
+  const pricingMap = new Map<string, ClusterBookPricing>(
+    pricing.map((p) => [`${p.ruhi_book_id}|${p.language}`, p])
+  );
 
   const totals = items.reduce(
     (acc, row) => ({
@@ -100,7 +108,33 @@ export function NewOrderForm({
 
   const updateItem = (idx: number, patch: Partial<ItemRow>) => {
     setItems((prev) =>
-      prev.map((row, i) => (i === idx ? { ...row, ...patch } : row))
+      prev.map((row, i) => {
+        if (i !== idx) return row;
+        const updated = { ...row, ...patch };
+
+        // If the book or language changed, look up pricing and pre-fill
+        // cost/sale (only when the user hasn't already typed values for
+        // the line — we don't want to wipe their input).
+        const bookOrLangChanged =
+          ("ruhi_book_id" in patch && patch.ruhi_book_id !== row.ruhi_book_id) ||
+          ("language" in patch && patch.language !== row.language);
+
+        if (bookOrLangChanged) {
+          const key = `${updated.ruhi_book_id}|${updated.language}`;
+          const match = pricingMap.get(key);
+          if (match) {
+            // Only pre-fill when the existing values are still at the
+            // empty-row defaults (cost === 0 AND sale_price === 0).
+            // Otherwise respect what the user already typed.
+            if (row.unit_cost === 0 && row.unit_sale_price === 0) {
+              updated.unit_cost = Number(match.default_cost);
+              updated.unit_sale_price = Number(match.default_sale_price);
+            }
+          }
+        }
+
+        return updated;
+      })
     );
   };
 
@@ -138,6 +172,7 @@ export function NewOrderForm({
       order_date: orderDate,
       supplier: supplier.trim() || null,
       notes: notes.trim() || null,
+      already_stocked: alreadyStocked,
       payer_kind: payerKind,
       paid_by_user_id: payerKind === "individual" ? paidByUserId : null,
       paid_by_institution_id:
@@ -432,6 +467,22 @@ export function NewOrderForm({
               </span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex items-center gap-3 pt-6">
+          <input
+            id="already_stocked"
+            type="checkbox"
+            checked={alreadyStocked}
+            onChange={(e) => setAlreadyStocked(e.target.checked)}
+            className="size-4"
+          />
+          <Label htmlFor="already_stocked" className="cursor-pointer">
+            These books are already in stock (don&apos;t update inventory).
+            Use this to retroactively document who paid for existing books.
+          </Label>
         </CardContent>
       </Card>
 

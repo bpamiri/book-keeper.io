@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  ClusterBookPricing,
   ClusterMember,
   PayerInstitution,
   Profile,
@@ -36,7 +37,7 @@ export default async function NewOrderPage({
     redirect(`/clusters/${id}/orders`);
   }
 
-  const [booksRes, locationsRes, membersRes, institutionsRes] =
+  const [booksRes, locationsRes, membersRes, institutionsRes, pricingRes] =
     await Promise.all([
       supabase.from("ruhi_books").select("*").eq("is_active", true),
       supabase
@@ -54,6 +55,10 @@ export default async function NewOrderPage({
         .select("*")
         .eq("cluster_id", id)
         .eq("is_active", true),
+      supabase
+        .from("cluster_book_pricing")
+        .select("*")
+        .eq("cluster_id", id),
     ]);
 
   const books = (booksRes.data ?? []) as RuhiBook[];
@@ -62,6 +67,7 @@ export default async function NewOrderPage({
     .map((row) => (row as unknown as { profiles: Profile | null }).profiles)
     .filter((p): p is Profile => p !== null);
   const institutions = (institutionsRes.data ?? []) as PayerInstitution[];
+  const pricing = (pricingRes.data ?? []) as ClusterBookPricing[];
 
   return (
     <NewOrderForm
@@ -70,6 +76,7 @@ export default async function NewOrderPage({
       locations={locations}
       profiles={memberProfiles}
       institutions={institutions}
+      pricing={pricing}
     />
   );
 }
