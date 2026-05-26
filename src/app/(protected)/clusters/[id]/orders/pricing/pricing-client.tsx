@@ -40,21 +40,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { BookPicker } from "@/components/forms/book-picker";
+import {
+  BookPicker,
+  type BookWithAvailability,
+} from "@/components/forms/book-picker";
 import { LanguagePicker } from "@/components/forms/language-picker";
 import { upsertPricing, deletePricing } from "@/app/actions/pricing";
 import { DEFAULT_BOOK_LANGUAGE } from "@/lib/languages";
 import type {
   BookLanguage,
   ClusterBookPricing,
-  RuhiBook,
 } from "@/types/database";
 
 interface PricingClientProps {
   clusterId: string;
   isAdmin: boolean;
   pricing: ClusterBookPricing[];
-  books: RuhiBook[];
+  books: BookWithAvailability[];
 }
 
 export function PricingClient({

@@ -22,7 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BookPicker } from "@/components/forms/book-picker";
+import {
+  BookPicker,
+  type BookWithAvailability,
+} from "@/components/forms/book-picker";
 import { LanguagePicker } from "@/components/forms/language-picker";
 import { LocationPicker } from "@/components/forms/location-picker";
 import { createOrder } from "@/app/actions/orders";
@@ -34,13 +37,12 @@ import type {
   PayerKind,
   Profile,
   ReimbursementStatus,
-  RuhiBook,
   StorageLocation,
 } from "@/types/database";
 
 interface NewOrderFormProps {
   clusterId: string;
-  books: RuhiBook[];
+  books: BookWithAvailability[];
   locations: StorageLocation[];
   profiles: Profile[];
   institutions: PayerInstitution[];

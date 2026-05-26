@@ -54,7 +54,10 @@ import {
   recordReimbursement,
   updateOrderItem,
 } from "@/app/actions/orders";
-import { BookPicker } from "@/components/forms/book-picker";
+import {
+  BookPicker,
+  type BookWithAvailability,
+} from "@/components/forms/book-picker";
 import { LanguagePicker } from "@/components/forms/language-picker";
 import { LocationPicker } from "@/components/forms/location-picker";
 import { DEFAULT_BOOK_LANGUAGE } from "@/lib/languages";
@@ -65,7 +68,6 @@ import type {
   PayerInstitution,
   Profile,
   ReimbursementStatus,
-  RuhiBook,
   StorageLocation,
 } from "@/types/database";
 import type { BookLanguage } from "@/types/database";
@@ -92,7 +94,7 @@ interface OrderDetailClientProps {
   isAdmin: boolean;
   order: BookOrder;
   items: BookOrderItem[];
-  books: RuhiBook[];
+  books: BookWithAvailability[];
   locations: StorageLocation[];
   profiles: Profile[];
   institutions: PayerInstitution[];
