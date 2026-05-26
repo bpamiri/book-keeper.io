@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -276,9 +277,31 @@ export function OrderDetailClient({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Order {order.order_date}
-        </h1>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/dashboard" className="hover:underline">
+            Dashboard
+          </Link>
+          <span>/</span>
+          <Link href={`/clusters/${clusterId}`} className="hover:underline">
+            Cluster
+          </Link>
+          <span>/</span>
+          <Link
+            href={`/clusters/${clusterId}/orders`}
+            className="hover:underline"
+          >
+            Orders
+          </Link>
+          <span>/</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight">
+            Order {order.order_date}
+          </h1>
+          {order.is_backfill && (
+            <Badge variant="outline">Backfill</Badge>
+          )}
+        </div>
         <p className="text-muted-foreground">
           {order.supplier ?? "No supplier"}
         </p>

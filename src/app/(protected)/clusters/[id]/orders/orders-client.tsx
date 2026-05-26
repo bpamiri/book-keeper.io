@@ -69,6 +69,19 @@ export function OrdersClient({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Link href="/dashboard" className="hover:underline">
+              Dashboard
+            </Link>
+            <span>/</span>
+            <Link
+              href={`/clusters/${clusterId}`}
+              className="hover:underline"
+            >
+              Cluster
+            </Link>
+            <span>/</span>
+          </div>
           <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
           <p className="text-muted-foreground">
             Track book purchases, costs, payers, and reimbursements.
@@ -123,7 +136,16 @@ export function OrdersClient({
                     className="cursor-pointer hover:bg-accent/50"
                     onClick={() => router.push(`/clusters/${clusterId}/orders/${order.id}`)}
                   >
-                    <TableCell>{order.order_date}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span>{order.order_date}</span>
+                        {order.is_backfill && (
+                          <Badge variant="outline" className="text-xs">
+                            Backfill
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{order.supplier ?? "—"}</TableCell>
                     <TableCell className="text-right">
                       {orderItems.length}
