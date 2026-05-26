@@ -1,30 +1,67 @@
 "use client";
 
-import { useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import type { RuhiBook } from "@/types/database";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { BookCategory, RuhiBook } from "@/types/database";
+
+/**
+ * A book row optionally decorated with an availability count
+ * (sum of inventory.quantity across all locations / languages /
+ * publication statuses for the current cluster).
+ *
+ * When `available` is provided, the dropdown renders a badge next to
+ * each option showing "N avail.". When omitted, no badge is rendered.
+ */
+export type BookWithAvailability = RuhiBook & { available?: number };
 
 interface BookPickerProps {
   value: string;
   onChange: (id: string) => void;
-  books: RuhiBook[];
+  books: BookWithAvailability[];
   disabled?: boolean;
   className?: string;
+}
+
+// Same ordering as the request page: main sequence first, JYSEP next,
+// children's-class branches last. Mirrors CATEGORY_RANK in request-form.tsx.
+const CATEGORY_RANK: Record<BookCategory, number> = {
+  main_sequence: 0,
+  junior_youth_text: 1,
+  branch_book5: 1,
+  branch_book3: 2,
+};
+
+function sortBooks<T extends RuhiBook>(books: T[]): T[] {
+  return [...books].sort((a, b) => {
+    const aRank = CATEGORY_RANK[a.category] ?? 99;
+    const bRank = CATEGORY_RANK[b.category] ?? 99;
+    if (aRank !== bRank) return aRank - bRank;
+    const aNum = a.book_number ?? Number.POSITIVE_INFINITY;
+    const bNum = b.book_number ?? Number.POSITIVE_INFINITY;
+    if (aNum !== bNum) return aNum - bNum;
+    return a.title.localeCompare(b.title);
+  });
+}
+
+function isJysepBook(b: RuhiBook) {
+  return b.category === "junior_youth_text" || b.category === "branch_book5";
+}
+
+/**
+ * The label shown for a book in both the trigger and each dropdown item.
+ * Matches the format used by the existing /request page so all book
+ * dropdowns read identically across the app.
+ */
+export function bookLabel(b: RuhiBook): string {
+  if (isJysepBook(b)) return `JYSEP: ${b.title}`;
+  if (b.book_number) return `Book ${b.book_number}: ${b.title}`;
+  return b.title;
 }
 
 export function BookPicker({
@@ -34,54 +71,27 @@ export function BookPicker({
   disabled,
   className,
 }: BookPickerProps) {
-  const [open, setOpen] = useState(false);
-  const selected = books.find((b) => b.id === value);
+  const sortedBooks = sortBooks(books.filter((b) => b.is_active));
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          disabled={disabled}
-          className={cn("w-full justify-between font-normal", className)}
-        >
-          {selected ? selected.title : "Select a book…"}
-          <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Search books…" />
-          <CommandList>
-            <CommandEmpty>No book found.</CommandEmpty>
-            <CommandGroup>
-              {books
-                .filter((b) => b.is_active)
-                .sort((a, b) => a.sort_order - b.sort_order)
-                .map((book) => (
-                  <CommandItem
-                    key={book.id}
-                    value={book.title}
-                    onSelect={() => {
-                      onChange(book.id);
-                      setOpen(false);
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 size-4",
-                        value === book.id ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    {book.title}
-                  </CommandItem>
-                ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <Select value={value} onValueChange={onChange} disabled={disabled}>
+      <SelectTrigger className={className}>
+        <SelectValue placeholder="Select a book…" />
+      </SelectTrigger>
+      <SelectContent>
+        {sortedBooks.map((book) => (
+          <SelectItem key={book.id} value={book.id}>
+            <span className="flex items-center gap-2">
+              {bookLabel(book)}
+              {book.available !== undefined && (
+                <Badge variant="outline" className="ml-1 text-xs">
+                  {book.available} avail.
+                </Badge>
+              )}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

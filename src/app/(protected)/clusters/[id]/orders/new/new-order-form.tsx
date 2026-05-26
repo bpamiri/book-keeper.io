@@ -22,7 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BookPicker } from "@/components/forms/book-picker";
+import {
+  BookPicker,
+  type BookWithAvailability,
+} from "@/components/forms/book-picker";
 import { LanguagePicker } from "@/components/forms/language-picker";
 import { LocationPicker } from "@/components/forms/location-picker";
 import { createOrder } from "@/app/actions/orders";
@@ -34,13 +37,12 @@ import type {
   PayerKind,
   Profile,
   ReimbursementStatus,
-  RuhiBook,
   StorageLocation,
 } from "@/types/database";
 
 interface NewOrderFormProps {
   clusterId: string;
-  books: RuhiBook[];
+  books: BookWithAvailability[];
   locations: StorageLocation[];
   profiles: Profile[];
   institutions: PayerInstitution[];
@@ -231,7 +233,7 @@ export function NewOrderForm({
           <CardTitle className="text-base">Order details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <div className="min-w-0 space-y-2">
               <Label htmlFor="order_date">Order date</Label>
               <Input
@@ -323,7 +325,7 @@ export function NewOrderForm({
             </div>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <div className="min-w-0 space-y-2">
               <Label>Reimbursement status</Label>
               <Select

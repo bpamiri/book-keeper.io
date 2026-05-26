@@ -5,6 +5,7 @@ import type {
   ClusterMember,
   RuhiBook,
 } from "@/types/database";
+import type { BookWithAvailability } from "@/components/forms/book-picker";
 import { PricingClient } from "./pricing-client";
 
 export default async function PricingPage({
@@ -32,7 +33,7 @@ export default async function PricingPage({
   const m = membership as unknown as ClusterMember;
   const isAdmin = m.cluster_role === "admin";
 
-  const [pricingRes, booksRes] = await Promise.all([
+  const [pricingRes, booksRes, inventoryRes] = await Promise.all([
     supabase
       .from("cluster_book_pricing")
       .select("*")
@@ -41,10 +42,30 @@ export default async function PricingPage({
       .from("ruhi_books")
       .select("*")
       .eq("is_active", true),
+    supabase
+      .from("inventory")
+      .select("ruhi_book_id, quantity")
+      .eq("cluster_id", id),
   ]);
 
   const pricing = (pricingRes.data ?? []) as ClusterBookPricing[];
-  const books = (booksRes.data ?? []) as RuhiBook[];
+  const rawBooks = (booksRes.data ?? []) as RuhiBook[];
+
+  // Aggregate inventory per book so BookPicker shows "N avail." per item.
+  const availabilityMap = new Map<string, number>();
+  for (const row of (inventoryRes.data ?? []) as {
+    ruhi_book_id: string;
+    quantity: number;
+  }[]) {
+    availabilityMap.set(
+      row.ruhi_book_id,
+      (availabilityMap.get(row.ruhi_book_id) ?? 0) + row.quantity
+    );
+  }
+  const books: BookWithAvailability[] = rawBooks.map((b) => ({
+    ...b,
+    available: availabilityMap.get(b.id) ?? 0,
+  }));
 
   return (
     <PricingClient
