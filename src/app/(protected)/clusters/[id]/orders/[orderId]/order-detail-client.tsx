@@ -294,9 +294,14 @@ export function OrderDetailClient({
           </Link>
           <span>/</span>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Order {order.order_date}
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight">
+            Order {order.order_date}
+          </h1>
+          {order.is_backfill && (
+            <Badge variant="outline">Backfill</Badge>
+          )}
+        </div>
         <p className="text-muted-foreground">
           {order.supplier ?? "No supplier"}
         </p>

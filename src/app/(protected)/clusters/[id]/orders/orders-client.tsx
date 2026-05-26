@@ -136,7 +136,16 @@ export function OrdersClient({
                     className="cursor-pointer hover:bg-accent/50"
                     onClick={() => router.push(`/clusters/${clusterId}/orders/${order.id}`)}
                   >
-                    <TableCell>{order.order_date}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span>{order.order_date}</span>
+                        {order.is_backfill && (
+                          <Badge variant="outline" className="text-xs">
+                            Backfill
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{order.supplier ?? "—"}</TableCell>
                     <TableCell className="text-right">
                       {orderItems.length}
