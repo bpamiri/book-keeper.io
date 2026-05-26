@@ -809,3 +809,103 @@ export async function deleteOrderItem(itemId: string) {
     return { error: 'Failed to delete order item' }
   }
 }
+
+export async function deleteOrder(orderId: string) {
+  try {
+    const supabase = await createClient()
+
+    // Load the order header and all its items in parallel.
+    const [orderRes, itemsRes] = await Promise.all([
+      supabase.from('book_orders').select('*').eq('id', orderId).single(),
+      supabase.from('book_order_items').select('*').eq('order_id', orderId),
+    ])
+
+    if (orderRes.error || !orderRes.data) {
+      return { error: 'Order not found' }
+    }
+    const order = orderRes.data
+    const items = itemsRes.data ?? []
+
+    const adminCheck = await verifyOrderAdmin(order.cluster_id)
+    if ('error' in adminCheck) return { error: adminCheck.error }
+    const { user } = adminCheck
+
+    // Backfill orders never touched inventory, so deletion is a row delete
+    // only — no validation or reversal needed.
+    if (!order.is_backfill) {
+      // Phase 1: validate that every line item can be reversed from inventory.
+      // We collect the inventory rows up front so phase 2 doesn't have to
+      // re-fetch (and so we don't make any writes if any line is invalid).
+      const inventoryPlan: Array<{
+        item: (typeof items)[number]
+        invId: string
+        currentQuantity: number
+      }> = []
+
+      for (const item of items) {
+        const { data: inv } = await supabase
+          .from('inventory')
+          .select('id, quantity')
+          .eq('cluster_id', order.cluster_id)
+          .eq('storage_location_id', item.storage_location_id)
+          .eq('ruhi_book_id', item.ruhi_book_id)
+          .eq('language', item.language)
+          .eq('publication_status', item.publication_status)
+          .maybeSingle()
+
+        if (!inv || inv.quantity < item.quantity) {
+          return {
+            error: `Cannot delete this order: insufficient stock to reverse line for "${item.language}" at one of the storage locations (have ${inv?.quantity ?? 0}, need ${item.quantity}). The stock may have been sold or transferred since the order was placed.`,
+          }
+        }
+
+        inventoryPlan.push({
+          item,
+          invId: inv.id,
+          currentQuantity: inv.quantity,
+        })
+      }
+
+      // Phase 2: apply the inventory decrements and log entries.
+      for (const planned of inventoryPlan) {
+        const newQty = planned.currentQuantity - planned.item.quantity
+        const { error: updErr } = await supabase
+          .from('inventory')
+          .update({ quantity: newQty, updated_by: user.id })
+          .eq('id', planned.invId)
+        if (updErr) return { error: updErr.message }
+
+        await supabase.from('inventory_log').insert({
+          cluster_id: order.cluster_id,
+          storage_location_id: planned.item.storage_location_id,
+          ruhi_book_id: planned.item.ruhi_book_id,
+          language: planned.item.language,
+          publication_status: planned.item.publication_status,
+          change_type: 'adjustment' as const,
+          quantity_change: -planned.item.quantity,
+          previous_quantity: planned.currentQuantity,
+          new_quantity: newQty,
+          related_order_item_id: planned.item.id,
+          notes: 'Order deleted (line reversed)',
+          performed_by: user.id,
+        })
+      }
+    }
+
+    // Delete the order. ON DELETE CASCADE on book_order_items removes the
+    // line rows; ON DELETE SET NULL on inventory_log.related_order_item_id
+    // preserves the audit trail with the FK nulled out.
+    const { error: deleteErr } = await supabase
+      .from('book_orders')
+      .delete()
+      .eq('id', orderId)
+
+    if (deleteErr) return { error: deleteErr.message }
+
+    revalidatePath(`/clusters/${order.cluster_id}/orders`)
+    revalidatePath(`/clusters/${order.cluster_id}`)
+    return { data: { success: true } }
+  } catch {
+    return { error: 'Failed to delete order' }
+  }
+}
