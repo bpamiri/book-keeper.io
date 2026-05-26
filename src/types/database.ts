@@ -632,6 +632,7 @@ export type Database = {
           reimbursed_by: string | null;
           reimbursement_notes: string | null;
           created_by: string;
+          is_backfill: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -650,6 +651,7 @@ export type Database = {
           reimbursed_by?: string | null;
           reimbursement_notes?: string | null;
           created_by: string;
+          is_backfill?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -668,6 +670,7 @@ export type Database = {
           reimbursed_by?: string | null;
           reimbursement_notes?: string | null;
           created_by?: string;
+          is_backfill?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -773,6 +776,67 @@ export type Database = {
           },
         ];
       };
+      cluster_book_pricing: {
+        Row: {
+          id: string;
+          cluster_id: string;
+          ruhi_book_id: string;
+          language: BookLanguage;
+          default_cost: number;
+          default_sale_price: number;
+          notes: string | null;
+          updated_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          cluster_id: string;
+          ruhi_book_id: string;
+          language: BookLanguage;
+          default_cost: number;
+          default_sale_price: number;
+          notes?: string | null;
+          updated_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          cluster_id?: string;
+          ruhi_book_id?: string;
+          language?: BookLanguage;
+          default_cost?: number;
+          default_sale_price?: number;
+          notes?: string | null;
+          updated_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cluster_book_pricing_cluster_id_fkey";
+            columns: ["cluster_id"];
+            isOneToOne: false;
+            referencedRelation: "clusters";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "cluster_book_pricing_ruhi_book_id_fkey";
+            columns: ["ruhi_book_id"];
+            isOneToOne: false;
+            referencedRelation: "ruhi_books";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "cluster_book_pricing_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -830,3 +894,4 @@ export type InventoryLog = Tables<'inventory_log'>;
 export type PayerInstitution = Tables<'payer_institutions'>;
 export type BookOrder = Tables<'book_orders'>;
 export type BookOrderItem = Tables<'book_order_items'>;
+export type ClusterBookPricing = Tables<'cluster_book_pricing'>;
