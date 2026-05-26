@@ -205,6 +205,11 @@ export default async function ClusterDetailPage({
               Manage Payer Institutions
             </Link>
           </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/clusters/${id}/orders/pricing`}>
+              Manage Pricing
+            </Link>
+          </Button>
         </div>
       )}
     </div>
