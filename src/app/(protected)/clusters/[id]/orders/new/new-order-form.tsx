@@ -374,32 +374,35 @@ export function NewOrderForm({
           {items.map((row, idx) => (
             <div
               key={idx}
-              className="grid gap-3 rounded-md border p-3 lg:grid-cols-[2fr_1fr_2fr_1fr_1fr_1fr_auto]"
+              className="grid grid-cols-1 gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,2fr)_5rem_7rem_7rem_auto]"
             >
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1">
                 <Label>Book</Label>
                 <BookPicker
                   value={row.ruhi_book_id}
                   onChange={(id) => updateItem(idx, { ruhi_book_id: id })}
                   books={books}
+                  className="w-full"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1">
                 <Label>Language</Label>
                 <LanguagePicker
                   value={row.language}
                   onChange={(lang) => updateItem(idx, { language: lang })}
+                  className="w-full"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1">
                 <Label>Location</Label>
                 <LocationPicker
                   value={row.storage_location_id}
                   onChange={(id) => updateItem(idx, { storage_location_id: id })}
                   locations={locations}
+                  className="w-full"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1">
                 <Label>Qty</Label>
                 <Input
                   type="number"
@@ -410,7 +413,7 @@ export function NewOrderForm({
                   }
                 />
               </div>
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1">
                 <Label>Unit cost</Label>
                 <Input
                   type="number"
@@ -422,7 +425,7 @@ export function NewOrderForm({
                   }
                 />
               </div>
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1">
                 <Label>Unit sale price</Label>
                 <Input
                   type="number"
