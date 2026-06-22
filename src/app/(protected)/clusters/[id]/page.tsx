@@ -103,22 +103,22 @@ export default async function ClusterDetailPage({
 
   const navItems = [
     {
-      title: "Inventory",
+      title: "Manage Inventory",
       description: `${totalBooks} books tracked`,
       href: `/clusters/${id}/inventory`,
       icon: BookOpen,
     },
     {
-      title: "Locations",
-      description: `${locationCount} storage locations`,
-      href: `/clusters/${id}/locations`,
-      icon: MapPin,
-    },
-    {
-      title: "Requests",
+      title: "Manage Requests",
       description: `${pendingRequests} pending`,
       href: `/clusters/${id}/requests`,
       icon: ClipboardList,
+    },
+    {
+      title: "Manage Locations",
+      description: `${locationCount} storage locations`,
+      href: `/clusters/${id}/locations`,
+      icon: MapPin,
     },
     {
       title: "Orders",
