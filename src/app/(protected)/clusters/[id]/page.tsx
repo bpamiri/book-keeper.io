@@ -93,11 +93,14 @@ export default async function ClusterDetailPage({
   const pendingRequests = requestRows.filter(
     (r) => r.status === "pending"
   ).length;
-  const awaitingFulfillment = requestRows.filter(
+  const pendingFulfillment = requestRows.filter(
     (r) => r.status === "approved"
   ).length;
+  const fulfilledRequests = requestRows.filter(
+    (r) => r.status === "fulfilled"
+  ).length;
   // "Approved" counts every request that has been greenlit, including those
-  // already fulfilled — a fulfilled request was necessarily approved first.
+  // already fulfilled — it equals Pending Fulfillment plus Fulfilled.
   const approvedRequests = requestRows.filter(
     (r) => r.status === "approved" || r.status === "fulfilled"
   ).length;
@@ -127,21 +130,27 @@ export default async function ClusterDetailPage({
             </span>
           </div>
           <div className="flex items-center justify-between">
+            <span>Pending Approval</span>
+            <span className="font-medium tabular-nums text-foreground">
+              {pendingRequests}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
             <span>Approved</span>
             <span className="font-medium tabular-nums text-foreground">
               {approvedRequests}
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span>Pending</span>
+            <span>Pending Fulfillment</span>
             <span className="font-medium tabular-nums text-foreground">
-              {pendingRequests}
+              {pendingFulfillment}
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span>Awaiting fulfillment</span>
+            <span>Fulfilled</span>
             <span className="font-medium tabular-nums text-foreground">
-              {awaitingFulfillment}
+              {fulfilledRequests}
             </span>
           </div>
         </div>
