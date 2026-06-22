@@ -68,18 +68,32 @@ export default async function RequestsPage({
   }
   const profileMap = Object.fromEntries(profiles.map((p) => [p.id, p]));
 
-  // Get locations and inventory for fulfill dialog
-  const [locationsResult, inventoryResult] = await Promise.all([
-    supabase
-      .from("storage_locations")
-      .select("*")
-      .eq("cluster_id", id)
-      .eq("is_active", true),
-    supabase.from("inventory").select("*").eq("cluster_id", id),
-  ]);
+  // Get locations and inventory for fulfill dialog, plus which requests
+  // already have fulfillments (so the UI knows which ones can be deleted).
+  const requestIds = requests.map((r) => r.id);
+  const [locationsResult, inventoryResult, fulfillmentsResult] =
+    await Promise.all([
+      supabase
+        .from("storage_locations")
+        .select("*")
+        .eq("cluster_id", id)
+        .eq("is_active", true),
+      supabase.from("inventory").select("*").eq("cluster_id", id),
+      supabase
+        .from("request_fulfillments")
+        .select("request_id")
+        .in("request_id", requestIds),
+    ]);
 
   const locations = (locationsResult.data ?? []) as unknown as StorageLocation[];
   const inventory = (inventoryResult.data ?? []) as unknown as Inventory[];
+  const requestIdsWithFulfillments = [
+    ...new Set(
+      ((fulfillmentsResult.data ?? []) as { request_id: string }[]).map(
+        (f) => f.request_id
+      )
+    ),
+  ];
 
   return (
     <div className="space-y-6">
@@ -104,6 +118,7 @@ export default async function RequestsPage({
         locations={locations}
         inventory={inventory}
         isAdmin={membership.cluster_role === "admin"}
+        requestIdsWithFulfillments={requestIdsWithFulfillments}
       />
     </div>
   );

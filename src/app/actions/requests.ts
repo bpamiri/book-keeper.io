@@ -144,6 +144,71 @@ export async function denyRequest(id: string, notes?: string | null) {
   }
 }
 
+export async function deleteRequest(id: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { error: 'Not authenticated' }
+
+    // Get the request to verify it exists and find its cluster
+    const { data: request, error: fetchError } = await supabase
+      .from('book_requests')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !request) return { error: 'Request not found' }
+
+    // Only platform admins or cluster admins of the owning cluster may delete
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    let isAdmin = profile?.role === 'platform_admin'
+    if (!isAdmin) {
+      const { data: membership } = await supabase
+        .from('cluster_members')
+        .select('cluster_role')
+        .eq('cluster_id', request.cluster_id)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single()
+      isAdmin = membership?.cluster_role === 'admin'
+    }
+    if (!isAdmin) return { error: 'Only cluster admins can delete requests' }
+
+    // Refuse to delete a request that has already pulled stock from
+    // inventory. Such requests have fulfillment records, and deleting
+    // them would leave inventory counts understated.
+    const { count: fulfillmentCount, error: countError } = await supabase
+      .from('request_fulfillments')
+      .select('id', { count: 'exact', head: true })
+      .eq('request_id', id)
+
+    if (countError) return { error: countError.message }
+    if ((fulfillmentCount ?? 0) > 0) {
+      return {
+        error:
+          'Cannot delete a request that has been fulfilled — its books were already pulled from inventory.',
+      }
+    }
+
+    const { error } = await supabase
+      .from('book_requests')
+      .delete()
+      .eq('id', id)
+
+    if (error) return { error: error.message }
+
+    revalidatePath(`/clusters/${request.cluster_id}`)
+    return { data: { success: true } }
+  } catch {
+    return { error: 'Failed to delete request' }
+  }
+}
+
 export async function fulfillRequest(data: {
   request_id: string
   fulfillments: Array<{
