@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 const STATUS_LABELS: Record<string, string> = {
   published: "Published",
@@ -17,6 +18,8 @@ import {
   ArrowDown,
   ArrowUpDown,
   Trash2,
+  AlertTriangle,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -487,6 +490,17 @@ function FulfillDialog({
     bookInventory.map((inv) => [inv.storage_location_id, inv.quantity])
   );
 
+  // How many copies of this book/language/edition are on hand across the
+  // active locations the admin can actually pull from. Drives the
+  // "no inventory" / "not enough inventory" messaging below.
+  const totalAvailable = locations.reduce(
+    (sum, loc) => sum + (locationInventoryMap.get(loc.id) ?? 0),
+    0
+  );
+  const hasNoInventory = totalAvailable === 0;
+  const hasShortfall =
+    totalAvailable > 0 && totalAvailable < request.quantity_requested;
+
   const totalAllocated = Object.values(quantities).reduce(
     (sum, v) => sum + (parseInt(v, 10) || 0),
     0
@@ -542,59 +556,120 @@ function FulfillDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-3">
-            {locations.map((loc) => {
-              const available = locationInventoryMap.get(loc.id) ?? 0;
-              if (available === 0) return null;
-              return (
-                <div key={loc.id} className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{loc.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {available} available
-                    </p>
-                  </div>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={available}
-                    className="w-20 text-right"
-                    value={quantities[loc.id] ?? ""}
-                    onChange={(e) =>
-                      setQuantities((prev) => ({
-                        ...prev,
-                        [loc.id]: e.target.value,
-                      }))
-                    }
-                    placeholder="0"
-                  />
+          {hasNoInventory ? (
+            <div className="space-y-4">
+              <div className="flex gap-2 rounded-md border bg-muted/50 p-3 text-sm">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                <div className="space-y-1">
+                  <p className="font-medium">No inventory available</p>
+                  <p className="text-muted-foreground">
+                    There&apos;s no stock of this book ({request.language},{" "}
+                    {STATUS_LABELS[request.publication_status] ??
+                      request.publication_status}
+                    ) in any active storage location. Add inventory before
+                    fulfilling this request.
+                  </p>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Close
+                </Button>
+                <Button asChild>
+                  <Link href={`/clusters/${request.cluster_id}/inventory`}>
+                    <Plus className="mr-1 size-4" />
+                    Add inventory
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {hasShortfall && (
+                <div className="flex gap-2 rounded-md border bg-muted/50 p-3 text-sm">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                  <div className="space-y-1">
+                    <p className="font-medium">Not enough inventory</p>
+                    <p className="text-muted-foreground">
+                      Only {totalAvailable} of {request.quantity_requested}{" "}
+                      requested copies are available across your active
+                      locations. Add more inventory to fully fulfill this
+                      request.
+                    </p>
+                    <Button
+                      asChild
+                      variant="link"
+                      className="h-auto p-0 text-sm"
+                    >
+                      <Link
+                        href={`/clusters/${request.cluster_id}/inventory`}
+                      >
+                        Add inventory
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-          <div className="flex items-center justify-between border-t pt-3 text-sm">
-            <span>Total allocated:</span>
-            <span
-              className={
-                totalAllocated === request.quantity_requested
-                  ? "font-bold text-green-600"
-                  : "font-bold"
-              }
-            >
-              {totalAllocated} / {request.quantity_requested}
-            </span>
-          </div>
+              <div className="space-y-3">
+                {locations.map((loc) => {
+                  const available = locationInventoryMap.get(loc.id) ?? 0;
+                  if (available === 0) return null;
+                  return (
+                    <div key={loc.id} className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{loc.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {available} available
+                        </p>
+                      </div>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={available}
+                        className="w-20 text-right"
+                        value={quantities[loc.id] ?? ""}
+                        onChange={(e) =>
+                          setQuantities((prev) => ({
+                            ...prev,
+                            [loc.id]: e.target.value,
+                          }))
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={
-              loading || totalAllocated !== request.quantity_requested
-            }
-          >
-            {loading ? "Fulfilling..." : "Fulfill Request"}
-          </Button>
+              <div className="flex items-center justify-between border-t pt-3 text-sm">
+                <span>Total allocated:</span>
+                <span
+                  className={
+                    totalAllocated === request.quantity_requested
+                      ? "font-bold text-green-600"
+                      : "font-bold"
+                  }
+                >
+                  {totalAllocated} / {request.quantity_requested}
+                </span>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={
+                  loading || totalAllocated !== request.quantity_requested
+                }
+              >
+                {loading ? "Fulfilling..." : "Fulfill Request"}
+              </Button>
+            </>
+          )}
         </form>
       </DialogContent>
     </Dialog>
