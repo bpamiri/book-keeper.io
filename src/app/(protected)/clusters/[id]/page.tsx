@@ -19,7 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Cluster, ClusterMember } from "@/types/database";
+import type { Cluster, ClusterMember, RequestStatus } from "@/types/database";
 import { clusterDisplayId } from "@/lib/clusters";
 
 export default async function ClusterDetailPage({
@@ -72,11 +72,7 @@ export default async function ClusterDetailPage({
       .select("id")
       .eq("cluster_id", id)
       .eq("is_active", true),
-    supabase
-      .from("book_requests")
-      .select("id")
-      .eq("cluster_id", id)
-      .eq("status", "pending"),
+    supabase.from("book_requests").select("status").eq("cluster_id", id),
     supabase
       .from("cluster_members")
       .select("id")
@@ -92,7 +88,19 @@ export default async function ClusterDetailPage({
     (inventoryResult.data ?? []) as { quantity: number }[]
   ).reduce((sum, item) => sum + item.quantity, 0);
   const locationCount = locationsResult.data?.length ?? 0;
-  const pendingRequests = requestsResult.data?.length ?? 0;
+  const requestRows = (requestsResult.data ?? []) as { status: RequestStatus }[];
+  const totalRequests = requestRows.length;
+  const pendingRequests = requestRows.filter(
+    (r) => r.status === "pending"
+  ).length;
+  const awaitingFulfillment = requestRows.filter(
+    (r) => r.status === "approved"
+  ).length;
+  // "Approved" counts every request that has been greenlit, including those
+  // already fulfilled — a fulfilled request was necessarily approved first.
+  const approvedRequests = requestRows.filter(
+    (r) => r.status === "approved" || r.status === "fulfilled"
+  ).length;
   const memberCount = membersResult.data?.length ?? 0;
   const totalOrders = ordersResult.data?.length ?? 0;
   const owedOrders = (ordersResult.data ?? []).filter(
@@ -110,7 +118,34 @@ export default async function ClusterDetailPage({
     },
     {
       title: "Manage Requests",
-      description: `${pendingRequests} pending`,
+      description: (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span>Total requests</span>
+            <span className="font-medium tabular-nums text-foreground">
+              {totalRequests}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Approved</span>
+            <span className="font-medium tabular-nums text-foreground">
+              {approvedRequests}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Pending</span>
+            <span className="font-medium tabular-nums text-foreground">
+              {pendingRequests}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Awaiting fulfillment</span>
+            <span className="font-medium tabular-nums text-foreground">
+              {awaitingFulfillment}
+            </span>
+          </div>
+        </div>
+      ),
       href: `/clusters/${id}/requests`,
       icon: ClipboardList,
     },
