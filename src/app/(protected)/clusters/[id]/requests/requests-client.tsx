@@ -10,10 +10,16 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 
-import { Search, Download } from "lucide-react";
+import {
+  Search,
+  Download,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -32,9 +38,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   approveRequest,
   denyRequest,
   fulfillRequest,
+  deleteRequest,
 } from "@/app/actions/requests";
 import type {
   BookRequest,
@@ -52,6 +69,8 @@ const statusVariant: Record<RequestStatus, "default" | "secondary" | "destructiv
   denied: "destructive",
 };
 
+type SortKey = "book" | "language" | "requested_by";
+
 interface RequestsClientProps {
   requests: BookRequest[];
   bookMap: Record<string, RuhiBook>;
@@ -59,6 +78,7 @@ interface RequestsClientProps {
   locations: StorageLocation[];
   inventory: Inventory[];
   isAdmin: boolean;
+  requestIdsWithFulfillments: string[];
 }
 
 export function RequestsClient({
@@ -68,13 +88,39 @@ export function RequestsClient({
   locations,
   inventory,
   isAdmin,
+  requestIdsWithFulfillments,
 }: RequestsClientProps) {
   const [fulfillOpen, setFulfillOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<BookRequest | null>(
     null
   );
+  const [deleteTarget, setDeleteTarget] = useState<BookRequest | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  // A request can be deleted only if it hasn't pulled any stock from
+  // inventory. Fulfilled requests always have fulfillments; partially
+  // fulfilled ones are still "approved" but appear in this set too.
+  const fulfillmentSet = new Set(requestIdsWithFulfillments);
+  const canDelete = (req: BookRequest) =>
+    req.status !== "fulfilled" && !fulfillmentSet.has(req.id);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  function requesterLabel(req: BookRequest) {
+    const p = profileMap[req.requested_by];
+    return (p?.full_name || p?.email || "").toLowerCase();
+  }
 
   const byTab =
     tab === "all" ? requests : requests.filter((r) => r.status === tab);
@@ -98,9 +144,28 @@ export function RequestsClient({
     return searchable.includes(q);
   });
 
+  const sorted = [...filtered];
+  if (sortKey) {
+    sorted.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "book") {
+        const av =
+          bookMap[a.ruhi_book_id]?.book_number ?? Number.POSITIVE_INFINITY;
+        const bv =
+          bookMap[b.ruhi_book_id]?.book_number ?? Number.POSITIVE_INFINITY;
+        cmp = av - bv;
+      } else if (sortKey === "language") {
+        cmp = a.language.localeCompare(b.language);
+      } else {
+        cmp = requesterLabel(a).localeCompare(requesterLabel(b));
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }
+
   function exportCsv() {
     const rows = [["Book", "Language", "Requested By", "Qty", "Purpose", "Status", "Date"]];
-    for (const req of filtered) {
+    for (const req of sorted) {
       const book = bookMap[req.ruhi_book_id];
       const requester = profileMap[req.requested_by];
       rows.push([
@@ -122,6 +187,42 @@ export function RequestsClient({
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  async function handleDelete() {
+    const target = deleteTarget;
+    if (!target) return;
+    setDeleting(true);
+    const result = await deleteRequest(target.id);
+    setDeleting(false);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Request deleted");
+    }
+    setDeleteTarget(null);
+  }
+
+  const sortHeader = (key: SortKey, label: string) => {
+    const active = sortKey === key;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(key)}
+        className="-ml-1 inline-flex items-center gap-1 rounded px-1 py-0.5 hover:text-foreground"
+      >
+        {label}
+        {active ? (
+          sortDir === "asc" ? (
+            <ArrowUp className="size-3.5" />
+          ) : (
+            <ArrowDown className="size-3.5" />
+          )
+        ) : (
+          <ArrowUpDown className="size-3.5 opacity-40" />
+        )}
+      </button>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -164,9 +265,11 @@ export function RequestsClient({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Book</TableHead>
-                  <TableHead>Language</TableHead>
-                  <TableHead>Requested By</TableHead>
+                  <TableHead>{sortHeader("book", "Book")}</TableHead>
+                  <TableHead>{sortHeader("language", "Language")}</TableHead>
+                  <TableHead>
+                    {sortHeader("requested_by", "Requested By")}
+                  </TableHead>
                   <TableHead className="text-right">Qty</TableHead>
                   <TableHead className="hidden md:table-cell">
                     Purpose
@@ -177,7 +280,7 @@ export function RequestsClient({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {sorted.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={isAdmin ? 8 : 7}
@@ -187,7 +290,7 @@ export function RequestsClient({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((req) => {
+                  sorted.map((req) => {
                     const book = bookMap[req.ruhi_book_id];
                     const requester = profileMap[req.requested_by];
                     return (
@@ -223,10 +326,12 @@ export function RequestsClient({
                           <TableCell>
                             <RequestActions
                               request={req}
+                              canDelete={canDelete(req)}
                               onFulfill={() => {
                                 setSelectedRequest(req);
                                 setFulfillOpen(true);
                               }}
+                              onDelete={() => setDeleteTarget(req)}
                             />
                           </TableCell>
                         )}
@@ -253,63 +358,104 @@ export function RequestsClient({
           }}
         />
       )}
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this request?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the request and can&apos;t be undone.
+              Requests that have already been fulfilled can&apos;t be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete request"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
 function RequestActions({
   request,
+  canDelete,
   onFulfill,
+  onDelete,
 }: {
   request: BookRequest;
+  canDelete: boolean;
   onFulfill: () => void;
+  onDelete: () => void;
 }) {
   const [loading, setLoading] = useState(false);
 
-  if (request.status === "pending") {
-    return (
-      <div className="flex gap-1">
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={loading}
-          onClick={async () => {
-            setLoading(true);
-            const result = await approveRequest(request.id);
-            setLoading(false);
-            if (result.error) toast.error(result.error);
-            else toast.success("Request approved");
-          }}
-        >
-          Approve
+  return (
+    <div className="flex gap-1">
+      {request.status === "pending" && (
+        <>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={loading}
+            onClick={async () => {
+              setLoading(true);
+              const result = await approveRequest(request.id);
+              setLoading(false);
+              if (result.error) toast.error(result.error);
+              else toast.success("Request approved");
+            }}
+          >
+            Approve
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={loading}
+            onClick={async () => {
+              setLoading(true);
+              const result = await denyRequest(request.id);
+              setLoading(false);
+              if (result.error) toast.error(result.error);
+              else toast.success("Request denied");
+            }}
+          >
+            Deny
+          </Button>
+        </>
+      )}
+
+      {request.status === "approved" && (
+        <Button size="sm" onClick={onFulfill}>
+          Fulfill
         </Button>
+      )}
+
+      {canDelete && (
         <Button
           size="sm"
           variant="ghost"
-          disabled={loading}
-          onClick={async () => {
-            setLoading(true);
-            const result = await denyRequest(request.id);
-            setLoading(false);
-            if (result.error) toast.error(result.error);
-            else toast.success("Request denied");
-          }}
+          className="text-destructive hover:text-destructive"
+          onClick={onDelete}
+          aria-label="Delete request"
         >
-          Deny
+          <Trash2 className="size-4" />
         </Button>
-      </div>
-    );
-  }
-
-  if (request.status === "approved") {
-    return (
-      <Button size="sm" onClick={onFulfill}>
-        Fulfill
-      </Button>
-    );
-  }
-
-  return null;
+      )}
+    </div>
+  );
 }
 
 function FulfillDialog({
